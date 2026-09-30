@@ -1,0 +1,191 @@
+{
+  "description": "VitaLedger record v1 / anchor v1 test vectors. See SPEC.md.",
+  "records": [
+    {
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      },
+      "canonical": "{\"claim\":{\"contains\":[\"milk\",\"soy\"],\"mayContain\":[\"peanut\"],\"type\":\"allergen_declaration\"},\"eventType\":\"attestation_created\",\"issuedAt\":\"2026-11-03T09:30:00Z\",\"issuer\":\"vl:issuer:example-brand\",\"schema\":\"vitaledger.record.v1\",\"sourceDigest\":\"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\",\"subject\":{\"kind\":\"gtin\",\"value\":\"4006381333931\"}}",
+      "recordDigest": "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a56260ab",
+      "leafHash": "ef40dd9b5f97b40ddac612309a3d7133756c948cb56f5e0a900b23f56f032622",
+      "proof": {
+        "leafIndex": 0,
+        "treeSize": 3,
+        "path": [
+          "6d510262e2961954ded0ea45275d4f04b7a9b35be0f04e6460a4dc9594adc7d6",
+          "e42158556016276c84d8de517e5bb3f6446f1763c0759d275bc75823dc587e8c"
+        ]
+      }
+    },
+    {
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "96385074"
+        },
+        "issuer": "vl:issuer:example-lab",
+        "claim": {
+          "type": "lab_result",
+          "analyte": "lead",
+          "valueMgPerKg": 0.01,
+          "limitMgPerKg": 0.02,
+          "method": "ICP-MS"
+        },
+        "issuedAt": "2026-11-04T14:00:00Z"
+      },
+      "canonical": "{\"claim\":{\"analyte\":\"lead\",\"limitMgPerKg\":0.02,\"method\":\"ICP-MS\",\"type\":\"lab_result\",\"valueMgPerKg\":0.01},\"eventType\":\"attestation_created\",\"issuedAt\":\"2026-11-04T14:00:00Z\",\"issuer\":\"vl:issuer:example-lab\",\"schema\":\"vitaledger.record.v1\",\"subject\":{\"kind\":\"gtin\",\"value\":\"96385074\"}}",
+      "recordDigest": "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b079",
+      "leafHash": "6d510262e2961954ded0ea45275d4f04b7a9b35be0f04e6460a4dc9594adc7d6",
+      "proof": {
+        "leafIndex": 1,
+        "treeSize": 3,
+        "path": [
+          "ef40dd9b5f97b40ddac612309a3d7133756c948cb56f5e0a900b23f56f032622",
+          "e42158556016276c84d8de517e5bb3f6446f1763c0759d275bc75823dc587e8c"
+        ]
+      }
+    },
+    {
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "036000291452"
+        },
+        "issuer": "vl:issuer:example-authority",
+        "claim": {
+          "type": "recall_notice",
+          "reason": "undeclared sesame",
+          "lots": [
+            "L2611A"
+          ]
+        },
+        "issuedAt": "2026-11-05T08:00:00Z"
+      },
+      "canonical": "{\"claim\":{\"lots\":[\"L2611A\"],\"reason\":\"undeclared sesame\",\"type\":\"recall_notice\"},\"eventType\":\"attestation_created\",\"issuedAt\":\"2026-11-05T08:00:00Z\",\"issuer\":\"vl:issuer:example-authority\",\"schema\":\"vitaledger.record.v1\",\"subject\":{\"kind\":\"gtin\",\"value\":\"036000291452\"}}",
+      "recordDigest": "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a5be",
+      "leafHash": "e42158556016276c84d8de517e5bb3f6446f1763c0759d275bc75823dc587e8c",
+      "proof": {
+        "leafIndex": 2,
+        "treeSize": 3,
+        "path": [
+          "12697d7cc26d0a1cd8926c67308eb0d47835a78b42cb1a248893c97e08aed005"
+        ]
+      }
+    }
+  ],
+  "batch": {
+    "merkleRoot": "1010a2ad39f3f3328aa75f4bcb736260d95d92a0715298f49bfb6d1d5ba9ff2b",
+    "metadata": {
+      "22092": {
+        "v": 1,
+        "s": "vitaledger.record.v1",
+        "r": "1010a2ad39f3f3328aa75f4bcb736260d95d92a0715298f49bfb6d1d5ba9ff2b",
+        "n": 3,
+        "i": "vl:registry:vitaledger"
+      }
+    }
+  },
+  "merkleSizes": [
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000"
+      ],
+      "merkleRoot": "a98c77e07de52f8ad42e0a56e2bf4a86265754fe3702d98fdfe4b039172c85a8"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001"
+      ],
+      "merkleRoot": "98261c0cabb0d9d1634aa3c5023d43b6dbecf35cf3323d29995c1a42f373816d"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502"
+      ],
+      "merkleRoot": "8dc6b3ee1323b0d6ee821e369a8ec4a6a670c337e53e2f606447b633a754511b"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626003"
+      ],
+      "merkleRoot": "e1a59cc318cfa3631b11d639c82358bb84199c0c990ecd54379b729f3730b6bb"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626003",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b004"
+      ],
+      "merkleRoot": "47cef5565f7e59320a32f82909d570bcfa2a4698d84e3312675594c1b58a8110"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626003",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b004",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a505",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626006"
+      ],
+      "merkleRoot": "c472b4fc9992583288427456fcd4f0711e6910ddd0881220698e5fcdf7323cd5"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626003",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b004",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a505",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626006",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b007"
+      ],
+      "merkleRoot": "64b20a7a6330e9df26e4c1f8e92ab67528505938d485c4588c4d2f896fc11227"
+    },
+    {
+      "recordDigests": [
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626000",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b001",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a502",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626003",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b004",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a505",
+        "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a5626006",
+        "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b007",
+        "601ad2aebb882a3bf848db34d98abea6417b4f838cfd598a644299e875b7a508"
+      ],
+      "merkleRoot": "da177427598a59de49d6cead573e739c28db689d7f99d0cb27eddc1d59683fb2"
+    }
+  ]
+}

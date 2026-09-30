@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Wistkey/vitaledger-verifier/schema/record.v1.json",
+  "title": "VitaLedger record v1",
+  "description": "An issuer's statement about a food product. Never contains data about a person. GTIN check digits and prev rules are enforced by the reference validator (SPEC.md §3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "eventType", "subject", "issuer", "claim", "issuedAt"],
+  "properties": {
+    "schema": { "const": "vitaledger.record.v1" },
+    "eventType": { "enum": ["attestation_created", "record_updated", "revoked"] },
+    "subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": { "kind": { "const": "gtin" }, "value": { "type": "string", "pattern": "^(\\d{8}|\\d{12,14})$" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "vl_product" },
+            "value": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
+          }
+        }
+      ]
+    },
+    "issuer": { "type": "string", "pattern": "^vl:issuer:[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$" },
+    "claim": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["allergen_declaration", "certification", "lab_result", "label_snapshot", "recall_notice"] }
+      }
+    },
+    "sourceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "issuedAt": { "type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\dZ$" },
+    "prev": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "if": { "properties": { "eventType": { "const": "attestation_created" } } },
+  "then": { "not": { "required": ["prev"] } },
+  "else": { "required": ["prev"] }
+}
