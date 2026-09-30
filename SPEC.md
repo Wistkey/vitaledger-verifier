@@ -124,7 +124,7 @@ A verifier MUST perform all of these steps, and the record is **valid** only if 
 7. **Root.** The anchored `r` equals the root from step 3.
 8. **Size.** The anchored `n` equals `proof.treeSize`.
 
-The block time the source reports is shown as the time the record was anchored. The verifier checks the bytes itself (step 4). It still relies on the source for the fact that the transaction is in a block, and for the block time. A verifier that wants no trust in any indexer can confirm both against its own node or a Mithril-certified snapshot.
+The source can be any relay, including VitaLedger's own API. Browsers need a relay because public indexers such as Koios don't send CORS headers. Step 4 means a relay can't forge or change an anchor: it can only return the real transaction bytes or fail. The block time the source reports is shown as the time the record was anchored. The verifier checks the bytes itself (step 4). It still relies on the source for the fact that the transaction is in a block, and for the block time. A verifier that wants no trust in any indexer can confirm both against its own node or a Mithril-certified snapshot.
 
 The reference CLI prints each check. Its exit codes are `0` valid, `1` invalid, `2` error (for example, the transaction was not found).
 
