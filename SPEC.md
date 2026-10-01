@@ -42,6 +42,20 @@ Records MUST be I-JSON (RFC 7493): no duplicate member names and no unpaired sur
 
 Every number is an IEEE 754 double, as in JavaScript: an integer above 2^53 is canonicalised as its nearest double (`9007199254740993` → `9007199254740992`), so issuers SHOULD keep numbers within ±2^53 and send large identifiers as strings. Non-finite values are not JSON and are invalid. Put units in the field name, for example `valueMgPerKg`.
 
+### 3.1 Claim conventions (non-normative)
+
+`claim` is free-form apart from `type`. These conventions keep records from different issuers comparable, and the VitaBaby app relies on them for display:
+
+| `claim.type` | Recommended members |
+|---|---|
+| `allergen_declaration` | `contains`, `mayContain`: arrays of allergen tokens; `basis` |
+| `lab_result` | `analyte`, `value<Unit>`, `limit<Unit>`, `result` ∈ `below_limit` / `above_limit` / `not_detected`, `method`, `accreditation`, `batchOrLot`, `testedOn` (YYYY-MM-DD) |
+| `certification` | `scheme`, `certificateId`, `certifiedBy`, `validFrom`, `validUntil` |
+| `label_snapshot` | `ingredientsText`, `allergens`, `per100` `{unit: "g"\|"ml", energyKcal, fatG, carbsG, sugarsG, proteinG, saltG}`, `labelVersion` |
+| `recall_notice` | `reason`, `allergens`, `lots`, `bestBefore`, `action`, `officialNoticeUrl` |
+
+Allergen tokens: `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish`, `sesame`, `celery`, `mustard`, `sulphites`, `lupin`, `molluscs`. Templates are in `issuer-pack/templates/`.
+
 ## 4. Digest and Merkle tree
 
 ### 4.1 Canonical form
@@ -153,7 +167,7 @@ The chain of `prev` links forms a record's history, and the latest anchored reco
 
 ## 8. Issuer registry (pilot)
 
-In the pilot, VitaLedger keeps the issuer registry off chain (`vl:registry:vitaledger`). It maps each `vl:issuer:<slug>` to a legal name, a kind (brand, lab, certifier, recall authority) and an Ed25519 public key. Issuers sign each record digest with that key, and VitaLedger checks the signature before accepting the record into a batch.
+In the pilot, VitaLedger keeps the issuer registry off chain (`vl:registry:vitaledger`). It maps each `vl:issuer:<slug>` to a legal name, a kind (brand, lab, certifier, recall authority) and an Ed25519 public key. Issuers sign each record with that key, and VitaLedger checks the signature before accepting the record into a batch. The signed message is the UTF-8 encoding of the string `vitaledger.record.v1:` followed by the lowercase hex record digest; the signature is the 64-byte Ed25519 signature as 128 lowercase hex characters. The domain prefix keeps a record signature from being replayed as any other kind of signed message. `vitaledger-issuer` (`src/issuer-cli.ts`) creates keys and signs records.
 
 In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-contract registry is considered only if issuer membership or revocation has to be enforced on chain.
 

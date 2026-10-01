@@ -1,0 +1,13 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "attestation_created",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": {
+    "type": "allergen_declaration",
+    "contains": ["dairy", "soy"],
+    "mayContain": ["peanut"],
+    "basis": "recipe and supplier specifications, 2026-10 review"
+  },
+  "issuedAt": "2026-11-03T09:30:00Z"
+}

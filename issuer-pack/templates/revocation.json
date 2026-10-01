@@ -1,0 +1,9 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "revoked",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": { "type": "allergen_declaration", "reason": "superseded by reformulation; see new record" },
+  "issuedAt": "2026-12-01T09:00:00Z",
+  "prev": "replace-with-the-record-digest-you-are-withdrawing-64-lowercase-hex"
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "attestation_created",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": {
+    "type": "certification",
+    "scheme": "EU organic",
+    "certificateId": "XX-BIO-000-12345",
+    "certifiedBy": "Example Certification Body",
+    "validFrom": "2026-01-01",
+    "validUntil": "2027-12-31"
+  },
+  "issuedAt": "2026-11-05T10:00:00Z"
+}

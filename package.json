@@ -1,6 +1,6 @@
 {
   "name": "vitaledger-verifier",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Reference verifier and specification for VitaLedger food-evidence records anchored on Cardano",
   "license": "Apache-2.0",
   "type": "module",
@@ -8,16 +8,19 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./browser": "./dist/browser/vitaledger-verifier.js"
+    "./browser": "./dist/browser/vitaledger-verifier.js",
+    "./issuer": "./dist/issuer.js"
   },
   "bin": {
-    "vitaledger-verify": "dist/cli.js"
+    "vitaledger-verify": "dist/cli.js",
+    "vitaledger-issuer": "dist/issuer-cli.js"
   },
   "files": [
+    "SPEC.md",
     "dist",
+    "issuer-pack",
     "schema",
-    "test-vectors",
-    "SPEC.md"
+    "test-vectors"
   ],
   "engines": {
     "node": ">=20"

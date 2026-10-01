@@ -1,0 +1,16 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "attestation_created",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": {
+    "type": "recall_notice",
+    "reason": "undeclared sesame",
+    "allergens": ["sesame"],
+    "lots": ["L2611A", "L2611B"],
+    "bestBefore": ["2027-03-01"],
+    "action": "do not eat; return to store for a refund",
+    "officialNoticeUrl": "https://www.example.gov/recalls/12345"
+  },
+  "issuedAt": "2026-11-06T08:00:00Z"
+}

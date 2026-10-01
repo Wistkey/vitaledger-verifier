@@ -1,0 +1,15 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "attestation_created",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": {
+    "type": "label_snapshot",
+    "ingredientsText": "Water, oats (12%), rapeseed oil, calcium carbonate, salt, vitamins (D2, B12)",
+    "allergens": ["gluten"],
+    "per100": { "unit": "ml", "energyKcal": 46, "fatG": 1.5, "carbsG": 6.7, "sugarsG": 4, "proteinG": 1, "saltG": 0.1 },
+    "labelVersion": "2026-09"
+  },
+  "sourceDigest": "replace-with-sha256-of-the-label-artwork-file-64-lowercase-hex-000",
+  "issuedAt": "2026-11-03T09:30:00Z"
+}

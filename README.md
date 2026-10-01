@@ -25,6 +25,10 @@ A bundle is `{ record, proof, anchor: { network, txHash, label? } }` (SPEC §6).
 
 Exit codes: `0` valid, `1` invalid, `2` error. Pass `--json` for machine-readable output.
 
+## For issuers
+
+Brands, labs, certifiers and recall authorities publish records with `vitaledger-issuer` (keygen, check, sign, submit). See **[issuer-pack/ISSUERS.md](issuer-pack/ISSUERS.md)** and the templates in `issuer-pack/templates/`.
+
 ## Library
 
 ```ts

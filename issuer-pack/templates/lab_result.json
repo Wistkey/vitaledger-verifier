@@ -1,0 +1,19 @@
+{
+  "schema": "vitaledger.record.v1",
+  "eventType": "attestation_created",
+  "subject": { "kind": "gtin", "value": "4006381333931" },
+  "issuer": "vl:issuer:your-slug",
+  "claim": {
+    "type": "lab_result",
+    "analyte": "lead",
+    "valueMgPerKg": 0.01,
+    "limitMgPerKg": 0.02,
+    "result": "below_limit",
+    "method": "ICP-MS",
+    "accreditation": "ISO/IEC 17025",
+    "batchOrLot": "L2611A",
+    "testedOn": "2026-10-28"
+  },
+  "sourceDigest": "replace-with-sha256-of-the-lab-report-pdf-64-lowercase-hex-chars00",
+  "issuedAt": "2026-11-04T14:00:00Z"
+}
