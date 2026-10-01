@@ -37,6 +37,13 @@ const ISSUED_AT = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const TOP_LEVEL_KEYS = new Set(["schema", "eventType", "subject", "issuer", "claim", "sourceDigest", "issuedAt", "prev"]);
 
+/** True when the YYYY-MM-DD part names a real calendar day (no 2026-02-30). */
+function isCalendarDate(iso: string): boolean {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
 /** GS1 mod-10 check digit for GTIN-8, -12, -13 and -14. */
 export function isValidGtin(value: string): boolean {
   if (!/^(\d{8}|\d{12,14})$/.test(value)) return false;
@@ -78,7 +85,9 @@ export function validateRecord(input: unknown): string[] {
   else if (!CLAIM_TYPES.includes(c.type as ClaimType)) errors.push(`claim.type must be one of ${CLAIM_TYPES.join(", ")}`);
 
   if (r.sourceDigest !== undefined && !isHex32(r.sourceDigest)) errors.push("sourceDigest must be 64 lowercase hex characters");
-  if (typeof r.issuedAt !== "string" || !ISSUED_AT.test(r.issuedAt)) errors.push("issuedAt must be UTC with second precision, e.g. 2026-11-03T09:30:00Z");
+  if (typeof r.issuedAt !== "string" || !ISSUED_AT.test(r.issuedAt) || !isCalendarDate(r.issuedAt)) {
+    errors.push("issuedAt must be a real UTC date-time with second precision, e.g. 2026-11-03T09:30:00Z");
+  }
 
   if (r.eventType === "attestation_created") {
     if (r.prev !== undefined) errors.push("prev is not allowed on attestation_created");

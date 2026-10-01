@@ -30,6 +30,8 @@ describe("record v1", () => {
   it("requires second-precision UTC timestamps", () => {
     expect(validateRecord({ ...allergenRecord, issuedAt: "2026-11-03T09:30:00.000Z" })).toHaveLength(1);
     expect(validateRecord({ ...allergenRecord, issuedAt: "2026-11-03T17:30:00+08:00" })).toHaveLength(1);
+    expect(validateRecord({ ...allergenRecord, issuedAt: "2026-02-30T09:30:00Z" })).toHaveLength(1);
+    expect(validateRecord({ ...allergenRecord, issuedAt: "2028-02-29T09:30:00Z" })).toEqual([]);
   });
 
   it("digest does not depend on key order", () => {

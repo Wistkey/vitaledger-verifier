@@ -29,16 +29,18 @@ A record is a JSON object with exactly these members:
 |---|---|---|
 | `schema` | yes | The string `"vitaledger.record.v1"` |
 | `eventType` | yes | `attestation_created`, `record_updated` or `revoked` (§7) |
-| `subject` | yes | `{ "kind": "gtin", "value": <GTIN-8/12/13/14 with valid GS1 check digit> }` or `{ "kind": "vl_product", "value": <lowercase UUID> }` |
+| `subject` | yes | Exactly `{ "kind": "gtin", "value": <GTIN-8/12/13/14 digits with valid GS1 check digit> }` or `{ "kind": "vl_product", "value": <lowercase UUID> }`; no other members |
 | `issuer` | yes | `vl:issuer:<slug>`, where the slug is 1–48 characters of `a-z 0-9 -`, not starting or ending with `-` |
 | `claim` | yes | An object with `type` ∈ `allergen_declaration`, `certification`, `lab_result`, `label_snapshot`, `recall_notice`. The other members depend on the claim type and are free-form JSON |
 | `sourceDigest` | no | 64 lowercase hex characters: the SHA-256 of a source document, such as a lab report PDF |
-| `issuedAt` | yes | UTC timestamp with second precision: `YYYY-MM-DDTHH:MM:SSZ` |
-| `prev` | see §7 | The record digest of the record this one updates or revokes |
+| `issuedAt` | yes | UTC timestamp with second precision: `YYYY-MM-DDTHH:MM:SSZ`, naming a real calendar date (`2026-02-30` is invalid); no fractional seconds or offsets |
+| `prev` | see §7 | 64 lowercase hex characters: the record digest of the record this one updates or revokes. **Required** for `record_updated` and `revoked`; **forbidden** for `attestation_created` |
 
-The machine-readable form is `schema/record.v1.json` (JSON Schema 2020-12). The GS1 check-digit rule and the `prev` rules cannot be expressed in JSON Schema, so only the reference validator (`validateRecord`) checks them.
+The machine-readable form is `schema/record.v1.json` (JSON Schema 2020-12); it expresses everything above, including the `prev` rule, **except** the GS1 check digit and calendar validity of `issuedAt`, which validators MUST check in code. `test-vectors/v1.json` → `invalidRecords` lists records every implementation must reject.
 
-Numbers SHOULD be integers or decimals that round-trip through IEEE 754 double precision. Put units in the field name, for example `valueMgPerKg`.
+Records MUST be I-JSON (RFC 7493): no duplicate member names and no unpaired surrogates. Verifiers SHOULD reject such input; JSON parsers that silently keep the last duplicate MUST NOT be relied on to detect it.
+
+Every number is an IEEE 754 double, as in JavaScript: an integer above 2^53 is canonicalised as its nearest double (`9007199254740993` → `9007199254740992`), so issuers SHOULD keep numbers within ±2^53 and send large identifiers as strings. Non-finite values are not JSON and are invalid. Put units in the field name, for example `valueMgPerKg`.
 
 ## 4. Digest and Merkle tree
 
@@ -69,7 +71,9 @@ An inclusion proof has three fields:
 - `treeSize`: `n`;
 - `path`: the RFC 9162 audit path, as 64-character lowercase hex hashes ordered from the leaf upwards.
 
-To verify it, use the algorithm in RFC 9162 §2.1.3.2 with the leaf hash as the starting hash. The proof MUST be rejected if it has more or fewer path elements than the tree size implies.
+To verify it, reject the proof unless `treeSize ≥ 1` and `0 ≤ leafIndex < treeSize`, then run the loop of RFC 9162 §2.1.3.2 starting from the leaf hash. The value it ends with is the proof's root, which step 7 of §6 compares with the anchored `r`. The proof MUST be rejected if it has more or fewer path elements than the tree size implies.
+
+**Hex everywhere** (digests, `path`, `r`, `p`, `txHash`) is lowercase. Verifiers MUST reject uppercase or mixed case rather than normalise it.
 
 ## 5. On-chain anchor
 
@@ -85,10 +89,10 @@ The value is a metadata map with text keys:
 | `s` | text | yes | Record schema of every record in the batch, `"vitaledger.record.v1"` |
 | `r` | text (64) | yes | Merkle root, lowercase hex |
 | `n` | int | yes | Number of records in the batch, `≥ 1` |
-| `i` | text | yes | The issuer registry that resolves the batch's `issuer` ids: `vl:registry:<name>` |
+| `i` | text | yes | The issuer registry that resolves the batch's `issuer` ids: `vl:registry:<name>`, where `<name>` is 1–52 characters of `a-z 0-9 -` |
 | `p` | text (64) | no | Transaction hash of the previous batch from the same registry. Chaining batches lets a verifier notice if one is missing |
 
-Every text value MUST fit Cardano's 64-byte metadata string limit. Verifiers MUST ignore keys they don't recognise (for forward compatibility) and MUST reject any `v` or `s` they don't support.
+Every text value MUST fit Cardano's 64-byte metadata string limit. Keys are text; `v` and `n` are integers; the others are text. Verifiers MUST reject a value of the wrong type, MUST ignore keys they don't recognise (for forward compatibility), and MUST reject any `v` or `s` they don't support.
 
 A batch holds records of exactly one schema. A transaction carries at most one VitaLedger anchor.
 
@@ -107,26 +111,34 @@ A **proof bundle** is JSON:
   "anchor":  { "network": "preprod", "txHash": "…", "label": 22092 }
 }
 ```
-`anchor.label` is optional and defaults to 22092.
+`anchor.label` is optional and defaults to 22092. `anchor.network` is `preprod`, `preview` or `mainnet`; the reference verifier fetches from the matching public Koios endpoint (`https://{preprod,preview}.koios.rest/api/v1`, `https://api.koios.rest/api/v1`) unless told otherwise.
 
 A verifier MUST perform all of these steps, and the record is **valid** only if every one passes:
 
 1. **Record format.** The record meets §3.
 2. **Digest.** Compute `recordDigest` as in §4.2.
 3. **Proof.** Compute the root from the digest and the proof, as in §4.4.
-4. **Transaction bytes.** Get the transaction's raw CBOR from any source, such as Koios `/tx_cbor`, Blockfrost `/txs/{hash}/cbor`, or your own node. Then:
+4. **Transaction bytes.** Get the transaction's raw CBOR from any source: Koios `POST /tx_cbor` with `{"_tx_hashes":[hash]}` (answers `[{tx_hash, cbor, tx_timestamp, block_height, …}]`, or `[]` if unknown), Blockfrost `GET /txs/{hash}/cbor`, or your own node. A transaction is the CBOR array `[body, witnesses, is_valid, auxiliary_data]` (Alonzo and later) or `[body, witnesses, auxiliary_data]` (earlier eras, where `is_valid` counts as true). Then:
    a. check that `blake2b-256(transaction body bytes)` equals `anchor.txHash`;
    b. check that the body's auxiliary-data hash (field 7) equals `blake2b-256(auxiliary data bytes)`.
 
-   The metadata MUST be read from these bytes. It MUST NOT be read from an indexer's JSON rendering, which can reorder keys or change encodings.
+   If `auxiliary_data` is null, or the body has no field 7, the transaction carries no anchor and the check fails. The metadata MUST be read from these bytes. It MUST NOT be read from an indexer's JSON rendering, which can reorder keys or change encodings.
 5. **Validity.** The transaction's `is_valid` flag is not `false`.
-6. **Anchor.** Decode the metadatum at the label as in §5.2.
+6. **Anchor.** Take the metadata map out of `auxiliary_data`, which comes in three era encodings: a plain map (Shelley), `[metadata, scripts]` (Allegra/Mary), or tag 259 wrapping `{0: metadata, …}` (Alonzo and later). Decode the metadatum at the label as in §5.2. Its `s` MUST equal the record's `schema`.
 7. **Root.** The anchored `r` equals the root from step 3.
 8. **Size.** The anchored `n` equals `proof.treeSize`.
 
 The source can be any relay, including VitaLedger's own API. Browsers need a relay because public indexers such as Koios don't send CORS headers. Step 4 means a relay can't forge or change an anchor: it can only return the real transaction bytes or fail. The block time the source reports is shown as the time the record was anchored. The verifier checks the bytes itself (step 4). It still relies on the source for the fact that the transaction is in a block, and for the block time. A verifier that wants no trust in any indexer can confirm both against its own node or a Mithril-certified snapshot.
 
-The reference CLI prints each check. Its exit codes are `0` valid, `1` invalid, `2` error (for example, the transaction was not found).
+The reference CLI prints each check. Exit codes:
+
+| Code | Meaning | Examples |
+|---|---|---|
+| `0` | Valid | Every step passed |
+| `1` | Invalid: the evidence doesn't hold | Bad record, bad proof, bytes that don't hash to `txHash`, no anchor at the label, root or size mismatch, `is_valid = false` |
+| `2` | Couldn't check | Transaction not found, network failure, unreadable bundle file |
+
+Bytes that don't hash to the requested transaction count as invalid (`1`), because the verifier can't tell a faulty source from a forged one; retry with another source before concluding.
 
 "Valid" means *this record is byte-for-byte the record that was anchored at that time.* It does **not** mean the claim is true, or that the issuer is who they say they are. Those questions are answered by the issuer registry (§8), and by the revocation status (§7).
 
@@ -152,7 +164,13 @@ In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-c
 
 ## 10. Test vectors
 
-`test-vectors/v1.json` gives, for three example records: the canonical string, record digest, leaf hash and inclusion proof, the batch root, and the anchor metadata. It also gives roots for batches of 1–9 digests. A conforming implementation reproduces every value exactly.
+`test-vectors/v1.json` gives:
+- `records`: three example records with canonical string, record digest, leaf hash and inclusion proof, plus the batch root and anchor metadata;
+- `edgeRecords` and `chainedBatch`: an update with `prev`, a `vl_product` subject, ECMAScript number edge cases, non-ASCII strings and keys that sort by UTF-16 code units, and an anchor that carries `p`;
+- `invalidRecords`: records that MUST be rejected, each with the reason;
+- `merkleSizes`: roots for batches of 1–9 digests.
+
+A conforming implementation reproduces every value exactly. An independent, clean-room Python implementation written from this document alone (`python/`) passes all of them.
 
 ## References
 - RFC 8785, JSON Canonicalization Scheme

@@ -17,7 +17,7 @@ npm ci
 npm run verify -- bundle.json          # or: npx vitaledger-verify bundle.json
 ```
 
-A bundle is `{ record, proof, anchor: { network, txHash } }` (SPEC §6). The verifier:
+A bundle is `{ record, proof, anchor: { network, txHash, label? } }` (SPEC §6). The verifier:
 1. recomputes the digest;
 2. walks the proof;
 3. fetches the transaction's **raw CBOR** from Koios (by default; pass `--blockfrost <id>` or set `BLOCKFROST_PROJECT_ID` to use Blockfrost), and checks those bytes hash to the transaction id;
@@ -32,6 +32,15 @@ import { recordDigest, merkleRoot, inclusionProof, verifyBundle } from "vitaledg
 ```
 
 The package's only runtime dependency is `@noble/hashes`. The CBOR reader is built in, and all the code runs in both Node and browsers.
+
+## Independent implementation
+
+`python/` holds a second verifier written **from SPEC.md alone**, without reading the TypeScript source. It uses only the Python standard library. It reproduces every test vector and verifies live Preprod anchors:
+
+```bash
+python3 python/test_vectors.py
+python3 python/vitaledger_verify.py python/bundle-live.json   # exit 0 = valid
+```
 
 ## Develop
 

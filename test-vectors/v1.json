@@ -107,6 +107,338 @@
       }
     }
   },
+  "edgeRecords": [
+    {
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "record_updated",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk"
+          ],
+          "mayContain": []
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-12-01T08:00:00Z",
+        "prev": "c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a56260ab"
+      },
+      "canonical": "{\"claim\":{\"contains\":[\"milk\"],\"mayContain\":[],\"type\":\"allergen_declaration\"},\"eventType\":\"record_updated\",\"issuedAt\":\"2026-12-01T08:00:00Z\",\"issuer\":\"vl:issuer:example-brand\",\"prev\":\"c4aef3fff747fe292056bd427df7a93b466cbb108c68d282102b5469a56260ab\",\"schema\":\"vitaledger.record.v1\",\"sourceDigest\":\"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\",\"subject\":{\"kind\":\"gtin\",\"value\":\"4006381333931\"}}",
+      "recordDigest": "4abbd574918ca64202c62f2db427dfd0cb9d16e3961ce3b9efdb76f7a7934de6",
+      "proof": {
+        "leafIndex": 0,
+        "treeSize": 2,
+        "path": [
+          "9813a94b4a3c960af4df4709d20147584aa6a8d1ddfa65130d28caf62d83f56c"
+        ]
+      }
+    },
+    {
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "vl_product",
+          "value": "3f2b8c1e-9a4d-4e6b-8f1a-2c3d4e5f6a7b"
+        },
+        "issuer": "vl:issuer:example-lab",
+        "claim": {
+          "type": "lab_result",
+          "numbers": [
+            1e+21,
+            100000000000000000000,
+            1e-7,
+            0.000001,
+            0,
+            0.1,
+            100,
+            4.5,
+            333333333.3333333,
+            9007199254740992
+          ],
+          "note": "Café ✓ 日本 😀 \u0000 \"quoted\"",
+          "€": 1,
+          "😀": 2,
+          "דּ": 3,
+          "a": 4
+        },
+        "issuedAt": "2028-02-29T23:59:59Z"
+      },
+      "canonical": "{\"claim\":{\"a\":4,\"note\":\"Café ✓ 日本 😀 \\u0000 \\\"quoted\\\"\",\"numbers\":[1e+21,100000000000000000000,1e-7,0.000001,0,0.1,100,4.5,333333333.3333333,9007199254740992],\"type\":\"lab_result\",\"€\":1,\"😀\":2,\"דּ\":3},\"eventType\":\"attestation_created\",\"issuedAt\":\"2028-02-29T23:59:59Z\",\"issuer\":\"vl:issuer:example-lab\",\"schema\":\"vitaledger.record.v1\",\"subject\":{\"kind\":\"vl_product\",\"value\":\"3f2b8c1e-9a4d-4e6b-8f1a-2c3d4e5f6a7b\"}}",
+      "recordDigest": "6210ab37fcab3be0b69c6849ed7ed7f90addb6b3489aba0d03cc07469d2e6083",
+      "proof": {
+        "leafIndex": 1,
+        "treeSize": 2,
+        "path": [
+          "47298f5176414e25db75e285e7cf9000e2d33cb8857227c300a076e2c09e58bf"
+        ]
+      }
+    }
+  ],
+  "invalidRecords": [
+    {
+      "why": "revoked without prev",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "revoked",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    },
+    {
+      "why": "prev on attestation_created",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z",
+        "prev": "8924fb85bf006ecb69cc56f5d047da6e68c8c482ad909dad150284e1ba08b079"
+      }
+    },
+    {
+      "why": "uppercase hex in prev",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "record_updated",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk"
+          ],
+          "mayContain": []
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-12-01T08:00:00Z",
+        "prev": "C4AEF3FFF747FE292056BD427DF7A93B466CBB108C68D282102B5469A56260AB"
+      }
+    },
+    {
+      "why": "impossible date",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-02-30T09:30:00Z"
+      }
+    },
+    {
+      "why": "fractional seconds",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00.000Z"
+      }
+    },
+    {
+      "why": "bad GTIN check digit",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333932"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    },
+    {
+      "why": "unknown top-level field",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z",
+        "childName": "x"
+      }
+    },
+    {
+      "why": "extra member in subject",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931",
+          "lot": "A1"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    },
+    {
+      "why": "uppercase UUID",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "vl_product",
+          "value": "3F2B8C1E-9A4D-4E6B-8F1A-2C3D4E5F6A7B"
+        },
+        "issuer": "vl:issuer:example-lab",
+        "claim": {
+          "type": "lab_result",
+          "numbers": [
+            1e+21,
+            100000000000000000000,
+            1e-7,
+            0.000001,
+            0,
+            0.1,
+            100,
+            4.5,
+            333333333.3333333,
+            9007199254740992
+          ],
+          "note": "Café ✓ 日本 😀 \u0000 \"quoted\"",
+          "€": 1,
+          "😀": 2,
+          "דּ": 3,
+          "a": 4
+        },
+        "issuedAt": "2028-02-29T23:59:59Z"
+      }
+    },
+    {
+      "why": "unknown claim type",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "gtin",
+          "value": "4006381333931"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "opinion"
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    }
+  ],
+  "chainedBatch": {
+    "description": "A second batch from the same registry; `p` links it to the first batch's transaction.",
+    "merkleRoot": "8ed15eded5ae4be05e2940c671c26fb2711a733080f6ca05bd5655cdec4dab0c",
+    "metadata": {
+      "22092": {
+        "v": 1,
+        "s": "vitaledger.record.v1",
+        "r": "8ed15eded5ae4be05e2940c671c26fb2711a733080f6ca05bd5655cdec4dab0c",
+        "n": 2,
+        "i": "vl:registry:vitaledger",
+        "p": "7111eecc3510eb132bc4ec1794514a58f9ca812b2995a23a02bc7bcc7a6a50ff"
+      }
+    }
+  },
   "merkleSizes": [
     {
       "recordDigests": [

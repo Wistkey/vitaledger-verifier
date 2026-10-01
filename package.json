@@ -1,6 +1,6 @@
 {
   "name": "vitaledger-verifier",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Reference verifier and specification for VitaLedger food-evidence records anchored on Cardano",
   "license": "Apache-2.0",
   "type": "module",
