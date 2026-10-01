@@ -121,7 +121,7 @@ export function verifyAgainstTransaction(bundle: ProofBundle, tx: ChainTransacti
   if (anchor.r !== off.root) c.fail("merkle root", `chain has ${anchor.r}, proof gives ${off.root}`);
   else c.pass("merkle root", "matches the root anchored on chain");
   if (anchor.n !== bundle.proof.treeSize) c.fail("batch size", `chain says ${anchor.n} records, proof says ${bundle.proof.treeSize}`);
-  else c.pass("batch size", `${anchor.n} records`);
+  else c.pass("batch size", `${anchor.n} ${anchor.n === 1 ? "record" : "records"}`);
 
   return result({ ...withDigests, anchoredAt: new Date(tx.blockTime * 1000).toISOString() });
 }
