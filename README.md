@@ -56,3 +56,13 @@ npm run vectors   # regenerate test-vectors/v1.json
 ```
 
 Licence: Apache-2.0.
+
+## Releasing
+
+Bump `version` in `package.json`, commit, then push a matching tag:
+
+```bash
+git tag -a v0.2.1 -m "vitaledger-verifier 0.2.1" && git push origin v0.2.1
+```
+
+`.github/workflows/release.yml` runs the tests (TypeScript and the independent Python implementation) and publishes to npm through Trusted Publishing, with provenance. No npm token is stored anywhere.

@@ -1,0 +1,36 @@
+name: release
+# Publishes to npm when a version tag (vX.Y.Z) is pushed, via npm Trusted
+# Publishing (OIDC): no npm token is stored anywhere, and each release gets a
+# provenance attestation linking it to this repository and commit.
+# One-time setup on npmjs.com: package settings -> Trusted Publisher ->
+# GitHub Actions, organisation "Wistkey", repository "vitaledger-verifier",
+# workflow "release.yml".
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write   # OIDC token for npm trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Trusted publishing needs npm >= 11.5
+        run: npm install -g npm@latest
+      - name: Tag must match package.json version
+        run: |
+          test "v$(node -p 'require("./package.json").version')" = "${GITHUB_REF_NAME}" \
+            || { echo "tag ${GITHUB_REF_NAME} does not match package.json version"; exit 1; }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Independent Python implementation reproduces the vectors
+        run: python3 python/test_vectors.py
+      - run: npm publish --access public --provenance
