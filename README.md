@@ -26,6 +26,12 @@ A bundle is `{ record, proof, anchor: { network, txHash, label? } }` (SPEC §6).
 
 Exit codes: `0` valid, `1` invalid, `2` error. Pass `--json` for machine-readable output.
 
+**No indexer trust:** add `--mithril` to also prove the transaction is on chain with a Mithril certificate, verified back to the network's genesis key (pinned in the package). It needs the optional Mithril client:
+
+```bash
+npx -p vitaledger-verifier -p @mithril-dev/mithril-client-wasm vitaledger-verify bundle.json --mithril
+```
+
 ## For issuers
 
 Brands, labs, certifiers and recall authorities publish records with `vitaledger-issuer` (keygen, check, sign, submit). See **[issuer-pack/ISSUERS.md](issuer-pack/ISSUERS.md)** and the templates in `issuer-pack/templates/`.
