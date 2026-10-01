@@ -14,7 +14,8 @@ An issuer (brand, lab, certifier or recall authority) publishes a record about a
 
 ```bash
 npm ci
-npm run verify -- bundle.json          # or: npx vitaledger-verify bundle.json
+npm run verify -- bundle.json          # from a clone
+npx -p vitaledger-verifier vitaledger-verify bundle.json   # from npm, no clone needed
 ```
 
 A bundle is `{ record, proof, anchor: { network, txHash, label? } }` (SPEC §6). The verifier:

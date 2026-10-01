@@ -64,7 +64,7 @@ Insert in numeric order:
 >
 > To check it independently:
 > ```
-> npx vitaledger-verify bundle.json            # TypeScript reference
+> npx -p vitaledger-verifier vitaledger-verify bundle.json   # TypeScript reference
 > python3 python/vitaledger_verify.py bundle.json   # independent implementation
 > ```
 >
