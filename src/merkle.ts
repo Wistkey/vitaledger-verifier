@@ -74,6 +74,28 @@ export function inclusionProof(recordDigests: string[], leafIndex: number): Incl
 }
 
 /**
+ * Every leaf's inclusion proof in one O(n log n) pass. Calling
+ * inclusionProof() per leaf rebuilds sibling subtrees each time (O(n²)
+ * overall), which takes minutes for a few thousand records.
+ */
+export function allInclusionProofs(recordDigests: string[]): InclusionProof[] {
+  const n = recordDigests.length;
+  if (n === 0) throw new MerkleError("a batch needs at least one record");
+  // Returns the subtree root and, per leaf, its path upward within the subtree.
+  const walk = (leaves: Uint8Array[]): { root: Uint8Array; paths: Uint8Array[][] } => {
+    if (leaves.length === 1) return { root: leaves[0], paths: [[]] };
+    const k = split(leaves.length);
+    const left = walk(leaves.slice(0, k));
+    const right = walk(leaves.slice(k));
+    for (const p of left.paths) p.push(right.root);
+    for (const p of right.paths) p.push(left.root);
+    return { root: nodeHash(left.root, right.root), paths: [...left.paths, ...right.paths] };
+  };
+  const { paths } = walk(recordDigests.map(leafHash));
+  return paths.map((path, leafIndex) => ({ leafIndex, treeSize: n, path: path.map(bytesToHex) }));
+}
+
+/**
  * Root implied by a record digest and its proof (RFC 9162 §2.1.3.2).
  * Throws if the proof is structurally impossible for its tree size.
  */
