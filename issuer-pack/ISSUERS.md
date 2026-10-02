@@ -15,7 +15,18 @@ This guide is for **brands, laboratories, certifiers and recall authorities** wh
 - It doesn't certify that your claim is true. The proof shows that the record is **unchanged and came from you**. The content is your responsibility, just as on your label.
 - It never stores personal data. **Records describe products only.** Never put a customer's, patient's or employee's name or identifier in a record, not even hashed.
 
-## Five steps
+## The quick way: the issuer studio (nothing to install)
+
+Open **https://api.vitababy.ai/issuer** in a recent browser:
+
+1. **Create a new key.** Your browser makes it and downloads `vitaledger-issuer-key.json`. Keep that file like a password, and send VitaLedger **only the public key** the page shows. The key never leaves your computer.
+2. **We register you** and send you your issuer id, `vl:issuer:<your-slug>`. Load your key file in the studio and check the registration.
+3. **Enter the barcode** and, optionally, **upload a photo of the label**. AI drafts the allergens and ingredients from it. Check every field against the label: the AI only fills in the form, and the statement is yours.
+4. **Review the exact record, sign and publish.** You get its proof link. The studio can also put the photo's SHA-256 in the record, so you can later show which label it was drawn from; keep the photo.
+
+The studio covers allergen declarations and label snapshots. For other claim types, updates and withdrawals, or to script publishing, use the command-line tool below. Both use the same key file.
+
+## Five steps with the command-line tool
 
 1. **Install the tool** (Node.js 20 or later):
    ```bash
