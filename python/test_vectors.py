@@ -90,6 +90,12 @@ canchor = vv.parse_anchor(V["chainedBatch"]["metadata"][str(vv.DEFAULT_LABEL)])
 eq("chainedBatch.p", canchor.get("p"), "7111eecc3510eb132bc4ec1794514a58f9ca812b2995a23a02bc7bcc7a6a50ff")
 
 # Invalid records: every one must be rejected
+for i, xv in enumerate(V.get("extensionRecords", [])):
+    rec = xv["record"]
+    eq(f"extensionRecords[{i}].valid", vv.validate_record(rec), [])
+    eq(f"extensionRecords[{i}].canonical", vv.jcs(rec), xv["canonical"])
+    eq(f"extensionRecords[{i}].recordDigest", vv.record_digest(rec), xv["recordDigest"])
+
 for i, iv in enumerate(V["invalidRecords"]):
     eq(f"invalidRecords[{i}] rejected ({iv['why']})", bool(vv.validate_record(iv["record"])), True)
 

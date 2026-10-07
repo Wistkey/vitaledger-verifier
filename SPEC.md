@@ -29,7 +29,7 @@ A record is a JSON object with exactly these members:
 |---|---|---|
 | `schema` | yes | The string `"vitaledger.record.v1"` |
 | `eventType` | yes | `attestation_created`, `record_updated` or `revoked` (§7) |
-| `subject` | yes | Exactly `{ "kind": "gtin", "value": <GTIN-8/12/13/14 digits with valid GS1 check digit> }` or `{ "kind": "vl_product", "value": <lowercase UUID> }`; no other members |
+| `subject` | yes | Exactly `{ "kind": "gtin", "value": <GTIN-8/12/13/14 digits with valid GS1 check digit> }`, `{ "kind": "vl_product", "value": <lowercase UUID> }`, or (spec 1.1) `{ "kind": "official_notice", "value": "<authority>:<notice id>" }` where `<authority>` matches `[a-z][a-z0-9-]{1,15}` and `<notice id>` matches `[A-Za-z0-9][A-Za-z0-9._-]{0,63}` (for example `uk-fsa:FSA-AA-45-2026`); no other members |
 | `issuer` | yes | `vl:issuer:<slug>`, where the slug is 1–48 characters of `a-z 0-9 -`, not starting or ending with `-` |
 | `claim` | yes | An object with `type` ∈ `allergen_declaration`, `certification`, `lab_result`, `label_snapshot`, `recall_notice`. The other members depend on the claim type and are free-form JSON |
 | `sourceDigest` | no | 64 lowercase hex characters: the SHA-256 of a source document, such as a lab report PDF |
@@ -53,6 +53,8 @@ Every number is an IEEE 754 double, as in JavaScript: an integer above 2^53 is c
 | `certification` | `scheme`, `certificateId`, `certifiedBy`, `validFrom`, `validUntil` |
 | `label_snapshot` | `ingredientsText`, `allergens`, `per100` `{unit: "g"\|"ml", energyKcal, fatG, carbsG, sugarsG, proteinG, saltG}`, `labelVersion` |
 | `recall_notice` | `reason`, `allergens`, `lots`, `bestBefore`, `action`, `officialNoticeUrl` |
+
+**Relayed official notices (spec 1.1).** A registry may relay a public authority's recall or allergy alert as a `recall_notice` whose subject is `official_notice`. The issuer is the relay (for example `vl:issuer:vitaledger-relay`), never the authority: the record attests *what the authority published and when it was relayed*, not that any particular product is affected. Recommended members: `authority` (name), `title`, `reason`, `allergens`, `products` (array of `{ name, packSize?, batchCodes?, bestBefore? }` as the authority describes them), `action`, `officialNoticeUrl`, `officialPublishedAt`, `officialModifiedAt`; and `sourceDigest` = SHA-256 of the canonical form (§4.1) of the authority's machine-readable notice exactly as fetched. When the authority changes a notice, the relay publishes `record_updated` with `prev`. Consumers must not present a relayed notice as a verified statement about a specific product: notices identify products by name and batch, not by GTIN.
 
 Allergen tokens: `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish`, `sesame`, `celery`, `mustard`, `sulphites`, `lupin`, `molluscs`. Templates are in `issuer-pack/templates/`.
 
@@ -174,6 +176,8 @@ In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-c
 ## 9. Versioning and the CIP-0170 path
 
 - `schema` versions the record, and `v` versions the anchor format. A breaking change means a new value. Existing proofs stay valid indefinitely, because verification depends only on the bytes already on chain.
+- **Additive extensions within v1.** A new subject kind or claim type may be added to `vitaledger.record.v1` when every record valid before stays valid with the same digest; this is a spec revision (1.1, 1.2, …), not a new schema. A verifier that meets a subject kind or claim type it doesn't know must report the record as **unsupported** (upgrade the verifier), not as tampered. Verifiers before 0.5.0 predate this rule and report such records as invalid record format.
+- **Spec revisions.** 1.0: initial. 1.1 (October 2026): subject kind `official_notice` and the relayed-notice convention in §3.1; test vectors gain `extensionRecords` (existing vectors unchanged).
 - **CIP-0170.** The anchor value at label 22092 is designed to serve directly as the application data of a CIP-0170 `ATTEST`. A later version can anchor a digest of the exact CBOR bytes of that value in the issuer's KERI key event log, and add the label-170 entry beside it in the same transaction. Label 22092 and its format would not change, so v1 verifiers keep working. (This is the approach of CIPs#1253: digest the metadatum's CBOR bytes, not a JSON rendering.)
 
 ## 10. Test vectors

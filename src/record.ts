@@ -7,6 +7,18 @@ import { isHex32 } from "./digest.js";
 
 export const RECORD_SCHEMA_V1 = "vitaledger.record.v1";
 
+/**
+ * Subject of a relayed official notice (SPEC §3, added in spec 1.1): a short
+ * authority code and the authority's own notice id.
+ */
+/**
+ * Prefix of a problem that only means "newer than this verifier" (SPEC §9):
+ * a record whose problems all carry it is unsupported, not tampered.
+ */
+export const UNSUPPORTED = "unsupported: ";
+
+export const OFFICIAL_NOTICE = /^[a-z][a-z0-9-]{1,15}:[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
 export const EVENT_TYPES = ["attestation_created", "record_updated", "revoked"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -19,7 +31,10 @@ export const CLAIM_TYPES = [
 ] as const;
 export type ClaimType = (typeof CLAIM_TYPES)[number];
 
-export type Subject = { kind: "gtin"; value: string } | { kind: "vl_product"; value: string };
+export type Subject =
+  | { kind: "gtin"; value: string }
+  | { kind: "vl_product"; value: string }
+  | { kind: "official_notice"; value: string };
 
 export interface RecordV1 {
   schema: typeof RECORD_SCHEMA_V1;
@@ -74,15 +89,25 @@ export function validateRecord(input: unknown): string[] {
     if (typeof s.value !== "string" || !isValidGtin(s.value)) errors.push("subject.value must be a GTIN with a valid check digit");
   } else if (s.kind === "vl_product") {
     if (typeof s.value !== "string" || !UUID.test(s.value)) errors.push("subject.value must be a lowercase UUID");
+  } else if (s.kind === "official_notice") {
+    if (typeof s.value !== "string" || !OFFICIAL_NOTICE.test(s.value)) {
+      errors.push("subject.value must be <authority>:<notice id>, e.g. uk-fsa:FSA-AA-45-2026");
+    }
   } else {
-    errors.push('subject.kind must be "gtin" or "vl_product"');
+    errors.push(typeof s.kind === "string" && /^[a-z][a-z0-9_]{1,31}$/.test(s.kind)
+      ? `${UNSUPPORTED}subject kind "${s.kind}" is newer than this verifier`
+      : 'subject.kind must be "gtin", "vl_product" or "official_notice"');
   }
 
   if (typeof r.issuer !== "string" || !ISSUER_ID.test(r.issuer)) errors.push("issuer must match vl:issuer:<slug>");
 
   const c = r.claim as Record<string, unknown> | undefined;
   if (typeof c !== "object" || c === null || Array.isArray(c)) errors.push("claim must be an object");
-  else if (!CLAIM_TYPES.includes(c.type as ClaimType)) errors.push(`claim.type must be one of ${CLAIM_TYPES.join(", ")}`);
+  else if (!CLAIM_TYPES.includes(c.type as ClaimType)) {
+    errors.push(typeof c.type === "string" && /^[a-z][a-z0-9_]{1,39}$/.test(c.type)
+      ? `${UNSUPPORTED}claim type "${c.type}" is newer than this verifier`
+      : `claim.type must be one of ${CLAIM_TYPES.join(", ")}`);
+  }
 
   if (r.sourceDigest !== undefined && !isHex32(r.sourceDigest)) errors.push("sourceDigest must be 64 lowercase hex characters");
   if (typeof r.issuedAt !== "string" || !ISSUED_AT.test(r.issuedAt) || !isCalendarDate(r.issuedAt)) {

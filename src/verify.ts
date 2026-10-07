@@ -6,7 +6,7 @@ import { koios } from "./chain.js";
 import { isHex32, recordDigest } from "./digest.js";
 import { type InclusionProof, rootFromProof } from "./merkle.js";
 import { parseBatchAnchor, VITALEDGER_LABEL } from "./metadata.js";
-import { validateRecord } from "./record.js";
+import { UNSUPPORTED, validateRecord } from "./record.js";
 import { parseTransaction } from "./tx.js";
 
 export interface ProofBundle {
@@ -25,6 +25,8 @@ export interface VerificationResult {
   valid: boolean;
   /** First failing check, in words. */
   reason?: string;
+  /** The record uses a subject kind or claim type newer than this verifier (SPEC §9): upgrade, not tampering. */
+  unsupported?: boolean;
   recordDigest?: string;
   merkleRoot?: string;
   txHash?: string;
@@ -36,6 +38,10 @@ export interface VerificationResult {
 
 class Checks {
   readonly list: Check[] = [];
+  isUnsupported = false;
+  unsupported() {
+    this.isUnsupported = true;
+  }
   pass(name: string, detail?: string) {
     this.list.push({ name, ok: true, detail });
   }
@@ -53,6 +59,7 @@ function offline(bundle: ProofBundle, c: Checks): { digest: string; root: string
   const problems = validateRecord(bundle.record);
   if (problems.length) {
     c.fail("record format", problems.join("; "));
+    if (problems.every((p) => p.startsWith(UNSUPPORTED))) c.unsupported();
     return undefined;
   }
   c.pass("record format", "vitaledger.record.v1");
@@ -73,7 +80,13 @@ export function verifyAgainstTransaction(bundle: ProofBundle, tx: ChainTransacti
   const c = new Checks();
   const result = (extra: Partial<VerificationResult> = {}): VerificationResult => {
     const failed = c.list.find((x) => !x.ok);
-    return { valid: !failed, reason: failed ? `${failed.name}: ${failed.detail}` : undefined, checks: c.list, ...extra };
+    return {
+      valid: !failed,
+      reason: failed ? `${failed.name}: ${failed.detail}` : undefined,
+      ...(c.isUnsupported ? { unsupported: true } : {}),
+      checks: c.list,
+      ...extra,
+    };
   };
   const txHash = bundle.anchor?.txHash;
   const network = bundle.anchor?.network;

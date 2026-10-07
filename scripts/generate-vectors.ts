@@ -38,6 +38,26 @@ const productRecord = {
   issuedAt: "2028-02-29T23:59:59Z",
 };
 const edgeRecords = [updateRecord, productRecord];
+// Spec 1.1 (additive): a relayed official notice. Kept apart so earlier vectors don't change.
+const noticeRecord = {
+  schema: "vitaledger.record.v1",
+  eventType: "attestation_created",
+  subject: { kind: "official_notice", value: "uk-fsa:FSA-AA-45-2026" },
+  issuer: "vl:issuer:vitaledger-relay",
+  claim: {
+    type: "recall_notice",
+    authority: "UK Food Standards Agency",
+    title: "Example Foods recalls Oat Bars because they contain milk not mentioned on the label",
+    allergens: ["dairy"],
+    products: [{ name: "Example Foods Oat Bars", packSize: "6 x 30g", batchCodes: ["L2611A"], bestBefore: ["2027-03-01"] }],
+    officialNoticeUrl: "https://www.food.gov.uk/news-alerts/alert/fsa-aa-45-2026",
+    officialPublishedAt: "2026-11-05",
+  },
+  sourceDigest: "5bb4a606d17a5798695f442c779a8c72f4d7eadac91b9b58867cf38ba05a47ef",
+  issuedAt: "2026-11-05T10:00:00Z",
+};
+const extensionRecords = [noticeRecord];
+if (validateRecord(noticeRecord).length) throw new Error(`notice record invalid: ${validateRecord(noticeRecord)}`);
 const invalidRecords = [
   { why: "revoked without prev", record: { ...allergenRecord, eventType: "revoked" } },
   { why: "prev on attestation_created", record: { ...allergenRecord, prev: recordDigest(labRecord) } },
@@ -49,6 +69,8 @@ const invalidRecords = [
   { why: "extra member in subject", record: { ...allergenRecord, subject: { kind: "gtin", value: "4006381333931", lot: "A1" } } },
   { why: "uppercase UUID", record: { ...productRecord, subject: { kind: "vl_product", value: "3F2B8C1E-9A4D-4E6B-8F1A-2C3D4E5F6A7B" } } },
   { why: "unknown claim type", record: { ...allergenRecord, claim: { type: "opinion" } } },
+  { why: "unknown subject kind", record: { ...allergenRecord, subject: { kind: "batch", value: "L2611A" } } },
+  { why: "official notice without authority", record: { ...allergenRecord, subject: { kind: "official_notice", value: "FSA-AA-45-2026" } } },
 ];
 for (const r of edgeRecords) if (validateRecord(r).length) throw new Error(`edge record invalid: ${validateRecord(r)}`);
 for (const r of invalidRecords) if (!validateRecord(r.record).length) throw new Error(`expected invalid: ${r.why}`);
@@ -77,6 +99,12 @@ const vectors = {
     proof: inclusionProof(chainedDigests, i),
   })),
   invalidRecords,
+  extensionRecords: extensionRecords.map((record) => ({
+    since: "spec 1.1",
+    record,
+    canonical: canonicalise(record),
+    recordDigest: recordDigest(record),
+  })),
   chainedBatch: {
     description: "A second batch from the same registry; `p` links it to the first batch's transaction.",
     merkleRoot: chainedRoot,

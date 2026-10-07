@@ -64,4 +64,19 @@ describe("verifyAgainstTransaction", () => {
     expect(r.valid).toBe(true);
     expect(r.checks.at(-1)).toEqual({ name: "chain source", ok: true, detail: "stub" });
   });
+
+  it("reports a newer subject kind as unsupported, not tampered (SPEC §9)", () => {
+    const { bundle, chainTx } = setup();
+    bundle.record = { ...labRecord, subject: { kind: "pallet", value: "P-1" } };
+    const r = verifyAgainstTransaction(bundle, chainTx);
+    expect(r.valid).toBe(false);
+    expect(r.unsupported).toBe(true);
+    expect(r.reason).toMatch(/newer than this verifier/);
+  });
+
+  it("still calls a malformed record invalid, not unsupported", () => {
+    const { bundle, chainTx } = setup();
+    bundle.record = { ...labRecord, subject: { kind: "pallet", value: "P-1" }, issuedAt: "yesterday" };
+    expect(verifyAgainstTransaction(bundle, chainTx).unsupported).toBeUndefined();
+  });
 });

@@ -65,7 +65,9 @@ async function main(): Promise<number> {
   } else {
     for (const c of result.checks) console.log(`${c.ok ? "✓" : "✗"} ${c.name}${c.detail ? ` — ${c.detail}` : ""}`);
     console.log("");
-    if (result.valid) {
+    if (result.unsupported) {
+      console.log(`UNSUPPORTED: this record uses a format newer than this verifier (${result.reason}). Upgrade vitaledger-verifier; this is not a sign of tampering.`);
+    } else if (result.valid) {
       console.log(`VALID: record unchanged since it was anchored at ${result.anchoredAt} on ${network}.`);
       console.log(explorerUrl(network, result.txHash!));
     } else {
@@ -76,6 +78,7 @@ async function main(): Promise<number> {
     console.log("Mithril has not certified this transaction yet; retry in a few minutes for a trustless inclusion check.");
     return 2;
   }
+  if (result.unsupported) return 2;
   return result.valid ? 0 : 1;
 }
 
@@ -103,7 +106,11 @@ async function verifyEverything(
       : (o) => {
           const m = o.mithril ? ` · Mithril ${o.mithril}` : "";
           const what = [o.claimType, o.issuer].filter(Boolean).join(" · ");
-          console.log(o.valid ? `✓ ${o.recordDigest.slice(0, 16)}… ${what} · anchored ${o.anchoredAt}${m}` : `✗ ${o.recordDigest.slice(0, 16)}… ${o.reason}`);
+          console.log(
+            o.valid
+              ? `✓ ${o.recordDigest.slice(0, 16)}… ${what} · anchored ${o.anchoredAt}${m}`
+              : `${o.unsupported ? "?" : "✗"} ${o.recordDigest.slice(0, 16)}… ${o.unsupported ? "newer format; upgrade the verifier" : o.reason}`,
+          );
         },
   });
   if (values.json) {
@@ -111,13 +118,13 @@ async function verifyEverything(
   } else {
     const pending = report.records.filter((r) => r.mithril === "pending").length;
     console.log("");
-    console.log(`${report.records.length} records in ${report.transactions} transactions from ${report.apiBase}: ${report.valid} valid, ${report.invalid} invalid.`);
+    console.log(`${report.records.length} records in ${report.transactions} transactions from ${report.apiBase}: ${report.valid} valid, ${report.invalid} invalid${report.unsupported ? `, ${report.unsupported} in a newer format (upgrade vitaledger-verifier)` : ""}.`);
     if (values.mithril) {
       console.log(`Mithril: ${report.records.filter((r) => r.mithril === "certified").length} certified${pending ? `, ${pending} not certified yet (recent anchors; retry in a few hours)` : ""}.`);
     }
     if (report.records.length === 0) console.log("No anchored records listed.");
   }
-  return report.invalid > 0 ? 1 : report.errors.length > 0 ? 2 : 0;
+  return report.invalid > 0 ? 1 : report.errors.length > 0 || report.unsupported > 0 ? 2 : 0;
 }
 
 main().then(

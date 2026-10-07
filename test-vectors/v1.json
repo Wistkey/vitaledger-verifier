@@ -423,6 +423,94 @@
         "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "issuedAt": "2026-11-03T09:30:00Z"
       }
+    },
+    {
+      "why": "unknown subject kind",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "batch",
+          "value": "L2611A"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    },
+    {
+      "why": "official notice without authority",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "official_notice",
+          "value": "FSA-AA-45-2026"
+        },
+        "issuer": "vl:issuer:example-brand",
+        "claim": {
+          "type": "allergen_declaration",
+          "contains": [
+            "milk",
+            "soy"
+          ],
+          "mayContain": [
+            "peanut"
+          ]
+        },
+        "sourceDigest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "issuedAt": "2026-11-03T09:30:00Z"
+      }
+    }
+  ],
+  "extensionRecords": [
+    {
+      "since": "spec 1.1",
+      "record": {
+        "schema": "vitaledger.record.v1",
+        "eventType": "attestation_created",
+        "subject": {
+          "kind": "official_notice",
+          "value": "uk-fsa:FSA-AA-45-2026"
+        },
+        "issuer": "vl:issuer:vitaledger-relay",
+        "claim": {
+          "type": "recall_notice",
+          "authority": "UK Food Standards Agency",
+          "title": "Example Foods recalls Oat Bars because they contain milk not mentioned on the label",
+          "allergens": [
+            "dairy"
+          ],
+          "products": [
+            {
+              "name": "Example Foods Oat Bars",
+              "packSize": "6 x 30g",
+              "batchCodes": [
+                "L2611A"
+              ],
+              "bestBefore": [
+                "2027-03-01"
+              ]
+            }
+          ],
+          "officialNoticeUrl": "https://www.food.gov.uk/news-alerts/alert/fsa-aa-45-2026",
+          "officialPublishedAt": "2026-11-05"
+        },
+        "sourceDigest": "5bb4a606d17a5798695f442c779a8c72f4d7eadac91b9b58867cf38ba05a47ef",
+        "issuedAt": "2026-11-05T10:00:00Z"
+      },
+      "canonical": "{\"claim\":{\"allergens\":[\"dairy\"],\"authority\":\"UK Food Standards Agency\",\"officialNoticeUrl\":\"https://www.food.gov.uk/news-alerts/alert/fsa-aa-45-2026\",\"officialPublishedAt\":\"2026-11-05\",\"products\":[{\"batchCodes\":[\"L2611A\"],\"bestBefore\":[\"2027-03-01\"],\"name\":\"Example Foods Oat Bars\",\"packSize\":\"6 x 30g\"}],\"title\":\"Example Foods recalls Oat Bars because they contain milk not mentioned on the label\",\"type\":\"recall_notice\"},\"eventType\":\"attestation_created\",\"issuedAt\":\"2026-11-05T10:00:00Z\",\"issuer\":\"vl:issuer:vitaledger-relay\",\"schema\":\"vitaledger.record.v1\",\"sourceDigest\":\"5bb4a606d17a5798695f442c779a8c72f4d7eadac91b9b58867cf38ba05a47ef\",\"subject\":{\"kind\":\"official_notice\",\"value\":\"uk-fsa:FSA-AA-45-2026\"}}",
+      "recordDigest": "66c88dec49172e708c4eb14dd84eba958faadc3f4d1cccd79e081be849dc9916"
     }
   ],
   "chainedBatch": {

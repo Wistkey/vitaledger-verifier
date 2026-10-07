@@ -37,12 +37,14 @@ npx -p vitaledger-verifier -p @mithril-dev/mithril-client-wasm vitaledger-verify
 One command re-verifies **every** record VitaLedger has anchored, from public data, so anyone outside the team can check our claims in a few minutes (Node.js 20+):
 
 ```bash
-npx -p vitaledger-verifier@0.4 -p @mithril-dev/mithril-client-wasm vitaledger-verify --all https://api.vitababy.ai --mithril
+npx -p vitaledger-verifier@0.5 -p @mithril-dev/mithril-client-wasm vitaledger-verify --all https://api.vitababy.ai --mithril
 ```
 
 It lists the anchored records (`GET /api/v1/proofs`), fetches each record and its proof, checks that the record really hashes to the listed digest, and verifies it against the transaction bytes fetched from Koios (or Blockfrost), exactly like a single bundle. Each transaction is fetched once per batch. With `--mithril`, block inclusion is also proven from Cardano's own certificates, once per transaction; anchors from the last few hours may show as "not certified yet". The API is trusted for nothing: a changed or swapped record is reported invalid. Output ends with a summary such as `6 records in 3 transactions …: 6 valid, 0 invalid.`
 
-Exit codes: `0` all valid, `1` at least one record invalid, `2` some records couldn't be checked (network). Add `--json` for the full report.
+Exit codes: `0` all valid, `1` at least one record invalid, `2` some records couldn't be checked (network) or use a newer format than your verifier (SPEC §9: shown as "newer format; upgrade", never as tampering).
+
+Spec 1.1 (verifier 0.5.0) adds relayed official notices: `recall_notice` records whose subject is `{ "kind": "official_notice", "value": "uk-fsa:FSA-AA-45-2026" }` (SPEC §3, §3.1). Verifiers before 0.5.0 report those as invalid record format; upgrade. Add `--json` for the full report.
 
 **If you ran it, tell us.** An independent re-run is one of the pilot's measures: open an issue on this repository with your output (or just "ran it, all valid"), or email alfred@vitaledger.info.
 

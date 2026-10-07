@@ -32,6 +32,15 @@ describe("published test vectors", () => {
     expect(anchor.p).toBe("7111eecc3510eb132bc4ec1794514a58f9ca812b2995a23a02bc7bcc7a6a50ff");
   });
 
+  it.each((vectors.extensionRecords ?? []).map((v: { record: unknown; canonical: string; recordDigest: string }) => [v.recordDigest, v] as const))(
+    "accepts spec 1.1 extension record %s",
+    (_, v) => {
+      expect(validateRecord(v.record)).toEqual([]);
+      expect(canonicalise(v.record)).toBe(v.canonical);
+      expect(recordDigest(v.record)).toBe(v.recordDigest);
+    },
+  );
+
   it.each(vectors.invalidRecords.map((v) => [v.why, v.record] as const))("rejects: %s", (_, record) => {
     expect(validateRecord(record)).not.toEqual([]);
   });

@@ -23,6 +23,10 @@ KOIOS_BY_NETWORK = {
 }
 
 
+class UnsupportedRecord(Exception):
+    """The record uses a subject kind or claim type newer than this verifier (SPEC §9)."""
+
+
 class VerifyError(Exception):
     """Operational error (exit code 2): not a judgement on the record."""
 
@@ -136,6 +140,7 @@ HEX64 = re.compile(r"^[0-9a-f]{64}\Z")
 ISSUER_RE = re.compile(r"^vl:issuer:[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?\Z")
 GTIN_RE = re.compile(r"^(\d{8}|\d{12,14})\Z")
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z")
+NOTICE_RE = re.compile(r"^[a-z][a-z0-9-]{1,15}:[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")  # SPEC 3, spec 1.1
 ISSUED_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d:[0-5]\dZ\Z")
 EVENT_TYPES = {"attestation_created", "record_updated", "revoked"}
 CLAIM_TYPES = {"allergen_declaration", "certification", "lab_result", "label_snapshot", "recall_notice"}
@@ -187,14 +192,24 @@ def validate_record(r) -> list[str]:
         elif subj["kind"] == "vl_product":
             if not UUID_RE.match(subj["value"]):
                 errs.append("subject.value is not a lowercase UUID")
+        elif subj["kind"] == "official_notice":
+            if not NOTICE_RE.match(subj["value"]):
+                errs.append("subject.value is not <authority>:<notice id>")
+        elif isinstance(subj.get("kind"), str) and re.match(r"^[a-z][a-z0-9_]{1,31}\Z", subj["kind"]):
+            errs.append(f"unsupported: subject kind {subj['kind']!r} is newer than this verifier")  # SPEC 9
         else:
-            errs.append("subject.kind must be gtin or vl_product")
+            errs.append("subject.kind must be gtin, vl_product or official_notice")
     if "issuer" in r and not (isinstance(r["issuer"], str) and ISSUER_RE.match(r["issuer"])):
         errs.append("bad issuer")
     if "claim" in r:
         c = r["claim"]
-        if not isinstance(c, dict) or c.get("type") not in CLAIM_TYPES:
+        if not isinstance(c, dict) or not isinstance(c.get("type"), str):
             errs.append("claim must be an object with a known type")
+        elif c["type"] not in CLAIM_TYPES:
+            if re.match(r"^[a-z][a-z0-9_]{1,39}\Z", c["type"]):
+                errs.append(f"unsupported: claim type {c['type']!r} is newer than this verifier")  # SPEC 9
+            else:
+                errs.append("claim must be an object with a known type")
     if "sourceDigest" in r and not (isinstance(r["sourceDigest"], str) and HEX64.match(r["sourceDigest"])):
         errs.append("bad sourceDigest")
     if "issuedAt" in r and not (isinstance(r["issuedAt"], str) and ISSUED_RE.match(r["issuedAt"]) and _is_calendar_date(r["issuedAt"])):
@@ -590,6 +605,10 @@ def verify_bundle(bundle, tx_bytes_source, out=print) -> bool:
     # 1. Record format
     errs = validate_record(record)
     check("1 record format (§3)", not errs, "; ".join(errs))
+    if errs and all(e.startswith("unsupported: ") for e in errs):
+        # SPEC §9: a newer format than this verifier, not tampering.
+        out("RESULT: UNSUPPORTED (newer record format; upgrade the verifier)")
+        raise UnsupportedRecord("; ".join(errs))
     # 2. Digest
     digest = None
     try:
@@ -663,6 +682,8 @@ def main(argv=None) -> int:
         if koios is None:
             raise VerifyError(f"unknown network {network!r}; pass --koios")
         return 0 if verify_bundle(bundle, lambda h: fetch_tx_cbor(koios, h)) else 1
+    except UnsupportedRecord:
+        return 2
     except (VerifyError, OSError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 2

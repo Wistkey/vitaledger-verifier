@@ -18,6 +18,8 @@ export interface RecordOutcome {
   anchoredAt?: string;
   claimType?: string;
   issuer?: string;
+  /** Newer format than this verifier (SPEC §9): neither valid nor tampered. */
+  unsupported?: boolean;
   /** "certified" | "pending" (Mithril hasn't reached it yet) | "failed" | undefined when not asked. */
   mithril?: "certified" | "pending" | "failed";
 }
@@ -29,6 +31,8 @@ export interface VerifyAllReport {
   valid: number;
   /** Records checked and found not to match the chain. */
   invalid: number;
+  /** Records in a newer format than this verifier: upgrade, not tampering. */
+  unsupported: number;
   /** Records that couldn't be checked (network, missing bundle). */
   errors: string[];
 }
@@ -67,7 +71,7 @@ export async function verifyAll(opts: VerifyAllOptions): Promise<VerifyAllReport
   const pageSize = opts.pageSize ?? 500;
   const providers = new Map<Network, ChainProvider>();
   const mithrilByTx = new Map<string, Promise<MithrilInclusion>>();
-  const report: VerifyAllReport = { apiBase: base, records: [], transactions: 0, valid: 0, invalid: 0, errors: [] };
+  const report: VerifyAllReport = { apiBase: base, records: [], transactions: 0, valid: 0, invalid: 0, unsupported: 0, errors: [] };
   const txs = new Set<string>();
 
   let after: string | null = null;
@@ -95,6 +99,7 @@ export async function verifyAll(opts: VerifyAllOptions): Promise<VerifyAllReport
         }
         Object.assign(outcome, {
           valid: result.valid,
+          unsupported: result.unsupported,
           reason: result.reason,
           txHash: result.txHash ?? bundle.anchor?.txHash,
           anchoredAt: result.anchoredAt,
@@ -121,6 +126,7 @@ export async function verifyAll(opts: VerifyAllOptions): Promise<VerifyAllReport
       }
       if (outcome.txHash) txs.add(outcome.txHash);
       if (outcome.valid) report.valid++;
+      else if (outcome.unsupported) report.unsupported++;
       else if (!errored) report.invalid++;
       report.records.push(outcome);
       opts.onRecord?.(outcome);

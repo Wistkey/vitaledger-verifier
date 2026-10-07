@@ -22,6 +22,15 @@
           "additionalProperties": false,
           "required": ["kind", "value"],
           "properties": {
+            "kind": { "const": "official_notice" },
+            "value": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,15}:[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
             "kind": { "const": "vl_product" },
             "value": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }
           }
