@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril]
+ * vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>]
+ *   re-verifies every anchored record the API lists, from public chain data
  * --mithril also proves the transaction is on chain with a Mithril certificate
  * (no indexer trust); needs: npm i @mithril-dev/mithril-client-wasm
  * Exit codes: 0 valid, 1 invalid, 2 error or not yet checkable.
@@ -10,6 +12,11 @@ import { parseArgs } from "node:util";
 import { blockfrost, explorerUrl, koios, type Network } from "./chain.js";
 import { mithrilClient, verifyInclusionWithMithril } from "./mithril.js";
 import { type ProofBundle, verifyBundle } from "./verify.js";
+import { verifyAll } from "./verify-all.js";
+
+const USAGE =
+  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril]\n" +
+  "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>] [--blockfrost <id>]";
 
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -19,11 +26,15 @@ async function main(): Promise<number> {
       koios: { type: "string" },
       blockfrost: { type: "string", default: process.env.BLOCKFROST_PROJECT_ID },
       mithril: { type: "boolean", default: false },
+      all: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
+  if (values.all !== undefined && !values.help && positionals.length === 0) {
+    return verifyEverything(values.all, values);
+  }
   if (values.help || positionals.length !== 1) {
-    console.error("usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril]");
+    console.error(USAGE);
     return 2;
   }
   const bundle = JSON.parse(readFileSync(positionals[0], "utf8")) as ProofBundle;
@@ -66,6 +77,47 @@ async function main(): Promise<number> {
     return 2;
   }
   return result.valid ? 0 : 1;
+}
+
+/** --all: every anchored record the API lists, re-verified from public data. */
+async function verifyEverything(
+  apiBase: string,
+  values: { json?: boolean; koios?: string; blockfrost?: string; mithril?: boolean },
+): Promise<number> {
+  if (!/^https?:\/\//.test(apiBase)) {
+    console.error(USAGE);
+    return 2;
+  }
+  const clients = new Map<Network, Awaited<ReturnType<typeof mithrilClient>>>();
+  const report = await verifyAll({
+    apiBase,
+    providerFor: (network) => (values.blockfrost ? blockfrost(network, values.blockfrost) : koios(network, values.koios)),
+    mithril: values.mithril
+      ? async (txHash, network) => {
+          if (!clients.has(network)) clients.set(network, await mithrilClient(network));
+          return verifyInclusionWithMithril(txHash, clients.get(network)!);
+        }
+      : undefined,
+    onRecord: values.json
+      ? undefined
+      : (o) => {
+          const m = o.mithril ? ` · Mithril ${o.mithril}` : "";
+          const what = [o.claimType, o.issuer].filter(Boolean).join(" · ");
+          console.log(o.valid ? `✓ ${o.recordDigest.slice(0, 16)}… ${what} · anchored ${o.anchoredAt}${m}` : `✗ ${o.recordDigest.slice(0, 16)}… ${o.reason}`);
+        },
+  });
+  if (values.json) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    const pending = report.records.filter((r) => r.mithril === "pending").length;
+    console.log("");
+    console.log(`${report.records.length} records in ${report.transactions} transactions from ${report.apiBase}: ${report.valid} valid, ${report.invalid} invalid.`);
+    if (values.mithril) {
+      console.log(`Mithril: ${report.records.filter((r) => r.mithril === "certified").length} certified${pending ? `, ${pending} not certified yet (recent anchors; retry in a few hours)` : ""}.`);
+    }
+    if (report.records.length === 0) console.log("No anchored records listed.");
+  }
+  return report.invalid > 0 ? 1 : report.errors.length > 0 ? 2 : 0;
 }
 
 main().then(
