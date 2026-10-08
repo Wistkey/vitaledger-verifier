@@ -56,7 +56,7 @@ Every number is an IEEE 754 double, as in JavaScript: an integer above 2^53 is c
 
 **Relayed official notices (spec 1.1).** A registry may relay a public authority's recall or allergy alert as a `recall_notice` whose subject is `official_notice`. The issuer is the relay (for example `vl:issuer:vitaledger-relay`), never the authority: the record attests *what the authority published and when it was relayed*, not that any particular product is affected. Recommended members: `authority` (name), `title`, `reason`, `allergens`, `products` (array of `{ name, packSize?, batchCodes?, bestBefore? }` as the authority describes them), `action`, `officialNoticeUrl`, `officialPublishedAt`, `officialModifiedAt`; and `sourceDigest` = SHA-256 of the canonical form (§4.1) of the authority's machine-readable notice exactly as fetched. When the authority changes a notice, the relay publishes `record_updated` with `prev`. Consumers must not present a relayed notice as a verified statement about a specific product: notices identify products by name and batch, not by GTIN.
 
-Allergen tokens: `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish`, `sesame`, `celery`, `mustard`, `sulphites`, `lupin`, `molluscs`. Templates are in `issuer-pack/templates/`.
+Allergen tokens: `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish`, `sesame`, `celery`, `mustard`, `sulphites`, `lupin`, `molluscs`: the 14 allergens of UK and EU food law. `shellfish` means **crustaceans** only; molluscs are always `molluscs`. Templates are in `issuer-pack/templates/`.
 
 ## 4. Digest and Merkle tree
 

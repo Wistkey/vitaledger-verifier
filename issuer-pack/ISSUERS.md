@@ -2,7 +2,7 @@
 
 > **Pilot on the Cardano Preprod testnet.** During the Cardano Accelerator pilot (Nov 2026 – Feb 2027), records are anchored on a test network. Nothing is live on mainnet.
 
-This guide is for **brands, laboratories, certifiers and recall authorities** who want parents using VitaBaby to be able to check that a statement about a food product is exactly what you published, and when you published it.
+This guide is for **brands, laboratories, certifiers and recall authorities** who want people using VitaBaby to be able to check that a statement about a food product is exactly what you published, and when you published it.
 
 ## What you get
 
@@ -66,7 +66,7 @@ The studio covers allergen declarations and label snapshots. For other claim typ
 | `label_snapshot` | `ingredientsText`, `allergens`, `per100` `{unit, energyKcal, fatG, carbsG, sugarsG, proteinG, saltG}`, `labelVersion` |
 | `recall_notice` | `reason`, `allergens`, `lots`, `bestBefore`, `action`, `officialNoticeUrl` |
 
-**Allergen tokens:** `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish`, `sesame` (the nine VitaBaby tracks), plus `celery`, `mustard`, `sulphites`, `lupin` and `molluscs` for the rest of the EU-14.
+**Allergen tokens:** `dairy`, `egg`, `peanut`, `tree_nut`, `soy`, `gluten`, `fish`, `shellfish` (crustaceans only), `sesame`, `celery`, `mustard`, `sulphites`, `lupin`, `molluscs`: the 14 allergens of UK and EU food law, which VitaBaby lets people watch for.
 
 ## Correcting or withdrawing a record
 

@@ -32,7 +32,7 @@ Insert in numeric order:
 >
 > ## Background
 >
-> VitaLedger lets parents check that a food-product record (an allergen declaration, lab result, certification, label snapshot or recall notice) is exactly what the brand, lab or authority published, and when. Issuers sign records off chain with Ed25519. VitaLedger batches the SHA-256 digests of the records' RFC 8785 canonical JSON into an RFC 9162 Merkle tree, and anchors only the root, so one transaction covers a whole batch. Anyone can verify a record with no wallet or account: recompute the digest, walk the inclusion proof, then compare the root with the metadata read from the transaction's own CBOR bytes, after checking those bytes against the transaction id and auxiliary-data hash.
+> VitaLedger lets anyone check that a food-product record (an allergen declaration, lab result, certification, label snapshot or recall notice) is exactly what the brand, lab or authority published, and when. Issuers sign records off chain with Ed25519. VitaLedger batches the SHA-256 digests of the records' RFC 8785 canonical JSON into an RFC 9162 Merkle tree, and anchors only the root, so one transaction covers a whole batch. Anyone can verify a record with no wallet or account: recompute the digest, walk the inclusion proof, then compare the root with the metadata read from the transaction's own CBOR bytes, after checking those bytes against the transaction id and auxiliary-data hash.
 >
 > Records describe products only. No personal data is ever anchored or stored in records.
 >
