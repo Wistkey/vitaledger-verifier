@@ -8,7 +8,7 @@
  * (no indexer trust); needs: npm i @mithril-dev/mithril-client-wasm
  * --registry also checks the record's issuer against the on-chain issuer
  * registry (Aiken prototype; informational, does not change VALID/INVALID)
- * --keri [oobi url] also checks a CIP-0170 ATTEST (label 170) in the anchor
+ * --keri [--kel <oobi url>] also checks a CIP-0170 ATTEST (label 170) in the anchor
  * transaction against the operator's KERI key event log (informational)
  * Exit codes: 0 valid, 1 invalid, 2 error or not yet checkable.
  */
@@ -23,8 +23,8 @@ import { verifyAll } from "./verify-all.js";
 import { ANCHOR_ADDRESSES, koiosAnchorLister } from "./completeness.js";
 
 const USAGE =
-  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry] [--keri [oobi url]]\n" +
-  "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--complete [--network <n>]] [--json] [--koios <url>] [--blockfrost <id>]";
+  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry] [--keri [--kel <oobi url>]]\n" +
+  "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--complete] [--registry] [--keri [--kel <oobi url>]] [--network <n>] [--json] [--koios <url>] [--blockfrost <id>]";
 
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -37,7 +37,8 @@ async function main(): Promise<number> {
       registry: { type: "boolean", default: false },
       complete: { type: "boolean", default: false },
       network: { type: "string", default: "preprod" },
-      keri: { type: "string" },
+      keri: { type: "boolean", default: false },
+      kel: { type: "string" },
       all: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -74,7 +75,7 @@ async function main(): Promise<number> {
 
   const issuer = values.registry && result.recordDigest ? await registryCheck(bundle, result.recordDigest, network, provider, values) : undefined;
 
-  const keri = values.keri !== undefined && result.txHash ? await keriCheck(result.txHash, network, provider, values.keri) : undefined;
+  const keri = values.keri && result.txHash ? await keriCheck(result.txHash, network, provider, values.kel ?? "") : undefined;
 
   if (values.json) {
     console.log(JSON.stringify({ ...result, ...(issuer ? { issuer } : {}), ...(keri ? { keri } : {}) }, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2));
@@ -109,7 +110,7 @@ async function keriCheck(
 ): Promise<{ result?: AttestResult; summary: string }> {
   const operator = KERI_OPERATOR[network];
   const oobi = oobiArg || operator?.oobi;
-  if (!oobi) return { summary: `no KERI operator pinned for ${network}; pass --keri <oobi url>` };
+  if (!oobi) return { summary: `no KERI operator pinned for ${network}; pass --kel <oobi url>` };
   try {
     const [tx, kel] = await Promise.all([provider.fetchTransaction(txHash), fetchKel(oobi)]);
     const result = verifyAttest(tx.cborHex, kel, operator?.aid);
@@ -176,7 +177,7 @@ async function registryCheck(
 /** --all: every anchored record the API lists, re-verified from public data. */
 async function verifyEverything(
   apiBase: string,
-  values: { json?: boolean; koios?: string; blockfrost?: string; mithril?: boolean; complete?: boolean; network?: string },
+  values: { json?: boolean; koios?: string; blockfrost?: string; mithril?: boolean; complete?: boolean; network?: string; registry?: boolean; keri?: boolean; kel?: string },
 ): Promise<number> {
   const completeNetwork = (values.network ?? "preprod") as Network;
   const addresses = ANCHOR_ADDRESSES[completeNetwork];
@@ -188,6 +189,20 @@ async function verifyEverything(
     console.error(USAGE);
     return 2;
   }
+  const registryDeployment = REGISTRY[completeNetwork];
+  if (values.registry && !registryDeployment) {
+    console.error(`no issuer registry pinned for ${completeNetwork}`);
+    return 2;
+  }
+  let keriOpt: { network: Network; kel: string; aid?: string } | undefined;
+  if (values.keri) {
+    const oobi = values.kel || KERI_OPERATOR[completeNetwork]?.oobi;
+    if (!oobi) {
+      console.error(`no KERI operator pinned for ${completeNetwork}; pass --kel <oobi url>`);
+      return 2;
+    }
+    keriOpt = { network: completeNetwork, kel: await fetchKel(oobi), aid: KERI_OPERATOR[completeNetwork]?.aid };
+  }
   const clients = new Map<Network, Awaited<ReturnType<typeof mithrilClient>>>();
   const report = await verifyAll({
     apiBase,
@@ -198,6 +213,10 @@ async function verifyEverything(
           return verifyInclusionWithMithril(txHash, clients.get(network)!);
         }
       : undefined,
+    registry: values.registry
+      ? { network: completeNetwork, policyId: registryDeployment!.policyId, locator: koiosRegistryLocator(completeNetwork, values.koios) }
+      : undefined,
+    keri: keriOpt,
     completeness: values.complete
       ? { network: completeNetwork, addresses: addresses!, lister: koiosAnchorLister(completeNetwork, values.koios) }
       : undefined,
@@ -234,8 +253,27 @@ async function verifyEverything(
       console.log(c.complete ? "COMPLETE: the API lists every batch on the operator's chain, with all their records." : "INCOMPLETE: see above.");
       console.log("(The indexer is trusted to return the anchor address's full transaction list.)");
     }
+    if (report.issuers) {
+      console.log("");
+      console.log("Issuers (API against the on-chain registry):");
+      for (const i of report.issuers) {
+        const sig = `${i.signatures.valid}/${i.records} signatures verify under the registry key`;
+        const mark = i.drift.length ? "✗" : i.warnings.length ? "·" : "✓";
+        console.log(`${mark} ${i.issuerId}: ${i.registry}${i.registry === "active" || i.registry === "revoked" ? `, ${sig}` : ""}`);
+        for (const d of i.drift) console.log(`    ✗ ${d}`);
+        for (const w of i.warnings) console.log(`    · ${w}`);
+      }
+    }
+    if (report.attestations) {
+      const a = report.attestations;
+      console.log("");
+      console.log(`CIP-0170: ${a.valid} batch(es) attested by the operator, ${a.unattested} from before attestation was switched on, ${a.invalid.length} invalid.`);
+      for (const x of a.invalid) console.log(`✗ ${x.txHash}: ${x.reason}`);
+    }
   }
-  const incomplete = report.completeness && !report.completeness.complete;
+  const drift = (report.issuers ?? []).some((i) => i.drift.length > 0);
+  const badAttest = (report.attestations?.invalid.length ?? 0) > 0;
+  const incomplete = (report.completeness && !report.completeness.complete) || drift || badAttest;
   const pendingOnly = report.completeness?.complete && report.completeness.missing.length > 0;
   if (report.invalid > 0 || incomplete) return 1;
   return report.errors.length > 0 || report.unsupported > 0 || pendingOnly ? 2 : 0;

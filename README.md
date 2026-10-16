@@ -1,5 +1,7 @@
 # vitaledger-verifier
 
+[![Public verification](https://github.com/Wistkey/vitaledger-verifier/actions/workflows/public-verification.yml/badge.svg)](https://github.com/Wistkey/vitaledger-verifier/actions/workflows/public-verification.yml)
+
 Reference specification and verifier for VitaLedger food-evidence records anchored on Cardano.
 
 > **Testnet only.** Records are anchored on Cardano **Preprod** during the pilot. Nothing here is live on mainnet.
@@ -32,9 +34,9 @@ Exit codes: `0` valid, `1` invalid, `2` error. Pass `--json` for machine-readabl
 npx -p vitaledger-verifier -p @mithril-dev/mithril-client-wasm vitaledger-verify bundle.json --mithril
 ```
 
-**Issuer on chain (prototype):** add `--registry` to look up the record's issuer in the on-chain issuer registry, an Aiken Plutus V3 contract (see [`aiken/`](aiken/README.md)). The entry is decoded from raw transaction bytes, like the anchor. When the bundle carries `issuerSignature`, the signature is checked against the registered key. With `--mithril`, the entry's transaction is certified too. The result is informational and never changes VALID or INVALID.
+**Issuer on chain:** add `--registry` (it works with `--all` too, checking every record and comparing the API's issuer keys with the registry) to look up the record's issuer in the on-chain issuer registry, an Aiken Plutus V3 contract (see [`aiken/`](aiken/README.md)). The entry is decoded from raw transaction bytes, like the anchor. When the bundle carries `issuerSignature`, the signature is checked against the registered key. With `--mithril`, the entry's transaction is certified too. The result is informational and never changes VALID or INVALID.
 
-**Operator attestation (CIP-0170):** when an anchor transaction also carries a label-170 `ATTEST`, `--keri [oobi url]` checks it. It verifies VitaLedger's KERI key event log from inception and confirms that the event named in the ATTEST anchors the Blake3 digest of the exact label-22092 bytes (SPEC §9). This check is informational.
+**Operator attestation (CIP-0170):** when an anchor transaction also carries a label-170 `ATTEST`, `--keri` checks it, using the operator log pinned for the network; `--kel <oobi url>` overrides it. It verifies VitaLedger's KERI key event log from inception and confirms that the event named in the ATTEST anchors the Blake3 digest of the exact label-22092 bytes (SPEC §9). This check is informational.
 
 ## Reproduce the whole pilot
 
@@ -51,6 +53,14 @@ It lists the anchored records (`GET /api/v1/proofs`), fetches each record and it
 Exit codes: `0` all valid, `1` at least one record invalid, `2` some records couldn't be checked (network) or use a newer format than your verifier (SPEC §9: shown as "newer format; upgrade", never as tampering).
 
 Spec 1.1 (verifier 0.5.0) adds relayed official notices: `recall_notice` records whose subject is `{ "kind": "official_notice", "value": "uk-fsa:FSA-AA-45-2026" }` (SPEC §3, §3.1). Verifiers before 0.5.0 report those as invalid record format; upgrade. Add `--json` for the full report.
+
+**Every day, in public.** The [public-verification](https://github.com/Wistkey/vitaledger-verifier/actions/workflows/public-verification.yml) workflow runs this with the published package and `--complete --registry --keri --mithril`. It checks four things:
+- every record, against the chain bytes and Mithril;
+- that the API lists every batch;
+- every issuer signature, against the on-chain registry, along with whether the API's issuer keys match it;
+- each batch's CIP-0170 attestation.
+
+A real failure opens a `public-verification` issue. The badge above shows the latest result.
 
 **If you ran it, tell us.** An independent re-run is one of the pilot's measures: open an issue on this repository with your output (or just "ran it, all valid"), or email alfred@vitaledger.info.
 

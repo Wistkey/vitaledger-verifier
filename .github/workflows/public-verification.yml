@@ -1,0 +1,66 @@
+name: public-verification
+# Every day, re-verify the whole VitaLedger pilot from public data with the
+# published package: exactly what anyone can run (README "Reproduce the whole
+# pilot"). Checks every record against the chain bytes and Mithril, that the
+# API lists every batch on chain (--complete), every record's issuer signature
+# against the on-chain registry (--registry), and each batch's CIP-0170 ATTEST
+# (--keri). A real failure (exit 1) opens or updates a `public-verification`
+# issue; "not certified yet" / network trouble (exit 2) only warns.
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: public-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Re-verify the pilot from public data
+        id: run
+        run: |
+          set +e
+          npx -y -p vitaledger-verifier@^0.6.2 -p @mithril-dev/mithril-client-wasm@0.10.8 \
+            vitaledger-verify --all https://api.vitababy.ai --complete --registry --keri --mithril > out.txt 2>&1
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          {
+            echo "## VitaLedger public verification ($(date -u +%F))"
+            echo
+            echo "Exit code: \`$code\` (0 all good · 1 a real problem · 2 not checkable yet)"
+            echo
+            echo '```'
+            # Per-record lines are long; keep the summaries and anything not OK.
+            grep -v '^✓ [0-9a-f]\{16\}…' out.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat out.txt
+      - name: Warn on not-yet-checkable
+        if: steps.run.outputs.code == '2'
+        run: echo "::warning::Some records couldn't be checked yet (recent anchors not Mithril-certified, or a network error). Retrying tomorrow."
+      - name: Open or update an issue on failure
+        if: steps.run.outputs.code != '0' && steps.run.outputs.code != '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create public-verification --color B60205 --description "Daily public verification failed" 2>/dev/null || true
+          body="Daily public verification failed on $(date -u +%F) (exit ${{ steps.run.outputs.code }}). Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          \`\`\`
+          $(grep -v '^✓ [0-9a-f]\{16\}…' out.txt | tail -60)
+          \`\`\`"
+          open=$(gh issue list --label public-verification --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then gh issue comment "$open" --body "$body"; else gh issue create --title "Public verification failed" --label public-verification --body "$body"; fi
+          exit 1
