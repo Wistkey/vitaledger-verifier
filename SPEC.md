@@ -171,14 +171,40 @@ The chain of `prev` links forms a record's history, and the latest anchored reco
 
 In the pilot, VitaLedger keeps the issuer registry off chain (`vl:registry:vitaledger`). It maps each `vl:issuer:<slug>` to a legal name, a kind (brand, lab, certifier, recall authority) and an Ed25519 public key. Issuers sign each record with that key, and VitaLedger checks the signature before accepting the record into a batch. The signed message is the UTF-8 encoding of the string `vitaledger.record.v1:` followed by the lowercase hex record digest; the signature is the 64-byte Ed25519 signature as 128 lowercase hex characters. The domain prefix keeps a record signature from being replayed as any other kind of signed message. `vitaledger-issuer` (`src/issuer-cli.ts`) creates keys and signs records.
 
+**Wallet signatures (CIP-30 / CIP-8, spec 1.2).** An issuer may use a Cardano wallet's payment key as its Ed25519 key. It signs with CIP-30 `signData(address, hex(message))`, where the message is the same UTF-8 string as above. The registered public key is still the raw 32-byte key, taken from the COSE_Key the wallet returns. The signature is then the hex COSE_Sign1 (CIP-8, RFC 9052) instead of 128 hex characters, and length tells the two apart. A COSE_Sign1 is accepted only if all of these hold:
+- the protected header's algorithm is EdDSA (−8);
+- the payload is attached, not hashed, and is exactly the message;
+- if the protected `address` header is present, its payment credential is blake2b-224 of the registered key;
+- the Ed25519 signature verifies over the `Signature1` Sig_structure with empty external data.
+
+`src/cip8.ts` implements this; the test vectors come from an independent CIP-8 signer.
+
 In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-contract registry is considered only if issuer membership or revocation has to be enforced on chain.
+
+*Non-normative.* A prototype on-chain registry, an Aiken Plutus V3 validator, is on Preprod in `aiken/` in the source repository. Each issuer is one UTxO holding a registry token and an inline datum with the issuer id, kind, Ed25519 key and status. v1 verification does not use it, and nothing in §§4–6 depends on it. `vitaledger-verify --registry` (and `src/registry.ts`) reads an issuer's entry from the raw CBOR of the transaction that created it, checked against its transaction id. With `--mithril`, it certifies that transaction too. The indexer is trusted only to say which UTxO holds the issuer's token now. When a bundle carries the optional `issuerSignature`, the signature is checked against the registered key. The result is informational: it never changes VALID or INVALID.
 
 ## 9. Versioning and the CIP-0170 path
 
 - `schema` versions the record, and `v` versions the anchor format. A breaking change means a new value. Existing proofs stay valid indefinitely, because verification depends only on the bytes already on chain.
 - **Additive extensions within v1.** A new subject kind or claim type may be added to `vitaledger.record.v1` when every record valid before stays valid with the same digest; this is a spec revision (1.1, 1.2, …), not a new schema. A verifier that meets a subject kind or claim type it doesn't know must report the record as **unsupported** (upgrade the verifier), not as tampered. Verifiers before 0.5.0 predate this rule and report such records as invalid record format.
-- **Spec revisions.** 1.0: initial. 1.1 (October 2026): subject kind `official_notice` and the relayed-notice convention in §3.1; test vectors gain `extensionRecords` (existing vectors unchanged).
+- **Spec revisions.** 1.0: initial. 1.1 (October 2026): subject kind `official_notice` and the relayed-notice convention in §3.1; test vectors gain `extensionRecords` (existing vectors unchanged). 1.2 (October 2026): CIP-8 wallet signatures in §8 (records, digests and anchors unchanged).
 - **CIP-0170.** The anchor value at label 22092 is designed to serve directly as the application data of a CIP-0170 `ATTEST`. A later version can anchor a digest of the exact CBOR bytes of that value in the issuer's KERI key event log, and add the label-170 entry beside it in the same transaction. Label 22092 and its format would not change, so v1 verifiers keep working. (This is the approach of CIPs#1253: digest the metadatum's CBOR bytes, not a JSON rendering.)
+
+**CIP-0170 ATTEST by the anchoring operator (spec 1.2, optional).** An anchor transaction MAY also carry, at label 170, a CIP-0170 `ATTEST` by VitaLedger's KERI identifier (AID), the operator that anchors batches:
+
+`{ "t": "ATTEST", "i": <AID>, "d": <digest>, "s": <hex sequence number>, "v": { "v": "1.0" } }`
+
+- `d` is the CESR qb64 Blake3-256 digest (code `E`) of the exact CBOR bytes of the label-22092 metadatum value in that transaction.
+- Before the transaction is built, the operator anchors `d` as a seal `{ "d": <digest> }` in event `s` of its key event log.
+- The KEL is served at `<api base>/oobi/<AID>` as a CESR stream.
+
+A verifier checks four things:
+1. The digest recomputed from the on-chain bytes equals `d`.
+2. The KEL verifies from inception: SAIDs, chaining, Ed25519 signatures with numeric thresholds, and pre-rotation commitments.
+3. Event `s` carries the seal.
+4. `i` is the operator AID pinned in the verifier.
+
+The operator identifier has no witnesses, so a duplicitous KEL is detected only by comparison. Every attested digest is also recorded on chain, next to the anchor, which makes that comparison public. This attests that VitaLedger anchored the batch. It does not establish a legal identity, since there is no `AUTH_BEGIN` or credential chain. Issuer-level KERI and vLEI chains remain future work. v1 verification never depends on it. `src/keri.ts` and `src/cip170.ts` implement the check, with test vectors from keripy.
 
 ## 10. Test vectors
 

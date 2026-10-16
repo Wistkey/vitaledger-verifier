@@ -1,0 +1,18 @@
+{
+  "network": "preprod",
+  "validator": "registry.issuer_registry",
+  "aikenVersion": "v1.1.24",
+  "admins": {
+    "required": 2,
+    "keys": [
+      "0d6eb2dea431c9ca562b124bbf59929e18f19babe324266ab1aea42b",
+      "d344cdacc27318d0722f08c41fe2ee5d882549703125a52cff28b66a",
+      "455836917f0a119bd8adf55af17520e0953471ae3e08a55fb3f64849"
+    ]
+  },
+  "feePayer": "addr_test1qqxkavk75scunjjk9vfyh06ej20p3uvm403jgfn2kxh2g2afzsf264mj8ggapkngksq454uayp2eg84hs6cymtljzd5qgshd8z",
+  "policyId": "b8645dd4274ef31a6ebe2cd0711a5eceeda5b7ba4ad4a2b5ab3d10a0",
+  "registryAddress": "addr_test1wzuxghw5ya80xxnwhckdqug6tm8wmfdhhf9dfg444v73pgqvl6t9f",
+  "referenceScript": null,
+  "transactions": []
+}

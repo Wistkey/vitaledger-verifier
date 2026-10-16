@@ -24,6 +24,8 @@ Open **https://api.vitababy.ai/issuer** in a recent browser:
 3. **Enter the barcode** and, optionally, **upload a photo of the label**. AI drafts the allergens and ingredients from it. Check every field against the label: the AI only fills in the form, and the statement is yours.
 4. **Review the exact record, sign and publish.** You get its proof link. The studio can also put the photo's SHA-256 in the record, so you can later show which label it was drawn from; keep the photo.
 
+**Already use a Cardano wallet?** In step 1, choose **Use a Cardano wallet** instead of creating a key. Any CIP-30 wallet works, for example Lace or Eternl. The studio reads your wallet's public key, and your wallet asks you to approve each signature (CIP-8). The key stays in your wallet, and there is no key file to keep. Register and publish exactly as above. Records signed this way verify the same way. *(Available once the studio update is live.)*
+
 The studio covers allergen declarations and label snapshots. For other claim types, updates and withdrawals, or to script publishing, use the command-line tool below. Both use the same key file.
 
 ## Five steps with the command-line tool

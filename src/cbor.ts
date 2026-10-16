@@ -68,6 +68,27 @@ export function readArrayItems(bytes: Uint8Array, offset = 0): Item[] {
   return items;
 }
 
+/** Entries of the map at `offset`, each key and value with its byte range. */
+export function readMapItems(bytes: Uint8Array, offset = 0): Array<[Item, Item]> {
+  const { major, arg, end: headEnd, indefinite } = head(bytes, offset);
+  if (major !== 5) throw new CborError("expected a map", offset);
+  const entries: Array<[Item, Item]> = [];
+  let o = headEnd;
+  for (let i = 0; indefinite ? bytes[o] !== 0xff : i < Number(arg); i++) {
+    const k = readItem(bytes, o);
+    const v = readItem(bytes, k.end);
+    entries.push([k, v]);
+    o = v.end;
+  }
+  return entries;
+}
+
+/** If the item at `offset` is a tag, its number and where its content starts. */
+export function readTagHead(bytes: Uint8Array, offset: number): { tag: number; contentOffset: number } | undefined {
+  const h = head(bytes, offset);
+  return h.major === 6 ? { tag: Number(h.arg), contentOffset: h.end } : undefined;
+}
+
 interface Head {
   major: number;
   arg: bigint;

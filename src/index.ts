@@ -7,3 +7,8 @@ export * from "./cbor.js";
 export * from "./tx.js";
 export * from "./chain.js";
 export * from "./verify.js";
+export * from "./registry.js";
+export * from "./cip8.js";
+export * from "./signed-message.js";
+export * from "./keri.js";
+export * from "./cip170.js";
