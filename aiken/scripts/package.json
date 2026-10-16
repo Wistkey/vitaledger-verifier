@@ -1,0 +1,26 @@
+{
+  "name": "vitaledger-registry-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Off-chain scripts for the Aiken issuer registry prototype (Preprod). Not part of the published vitaledger-verifier package.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "e2e": "tsx registry.e2e.ts",
+    "new-admin-wallet": "tsx new-admin-wallet.ts",
+    "register": "tsx register-issuer.ts",
+    "update": "tsx update-issuer.ts",
+    "list": "tsx list-registry.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@lucid-evolution/lucid": "^0.6.7",
+    "@noble/hashes": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
