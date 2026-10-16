@@ -190,6 +190,22 @@ In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-c
 - **Spec revisions.** 1.0: initial. 1.1 (October 2026): subject kind `official_notice` and the relayed-notice convention in §3.1; test vectors gain `extensionRecords` (existing vectors unchanged). 1.2 (October 2026): CIP-8 wallet signatures in §8 (records, digests and anchors unchanged).
 - **CIP-0170.** The anchor value at label 22092 is designed to serve directly as the application data of a CIP-0170 `ATTEST`. A later version can anchor a digest of the exact CBOR bytes of that value in the issuer's KERI key event log, and add the label-170 entry beside it in the same transaction. Label 22092 and its format would not change, so v1 verifiers keep working. (This is the approach of CIPs#1253: digest the metadatum's CBOR bytes, not a JSON rendering.)
 
+**CIP-0170 ATTEST by the anchoring operator (spec 1.2, optional).** An anchor transaction MAY also carry, at label 170, a CIP-0170 `ATTEST` by VitaLedger's KERI identifier (AID), the operator that anchors batches:
+
+`{ "t": "ATTEST", "i": <AID>, "d": <digest>, "s": <hex sequence number>, "v": { "v": "1.0" } }`
+
+- `d` is the CESR qb64 Blake3-256 digest (code `E`) of the exact CBOR bytes of the label-22092 metadatum value in that transaction.
+- Before the transaction is built, the operator anchors `d` as a seal `{ "d": <digest> }` in event `s` of its key event log.
+- The KEL is served at `<api base>/oobi/<AID>` as a CESR stream.
+
+A verifier checks four things:
+1. The digest recomputed from the on-chain bytes equals `d`.
+2. The KEL verifies from inception: SAIDs, chaining, Ed25519 signatures with numeric thresholds, and pre-rotation commitments.
+3. Event `s` carries the seal.
+4. `i` is the operator AID pinned in the verifier.
+
+The operator identifier has no witnesses, so a duplicitous KEL is detected only by comparison. Every attested digest is also recorded on chain, next to the anchor, which makes that comparison public. This attests that VitaLedger anchored the batch. It does not establish a legal identity, since there is no `AUTH_BEGIN` or credential chain. Issuer-level KERI and vLEI chains remain future work. v1 verification never depends on it. `src/keri.ts` and `src/cip170.ts` implement the check, with test vectors from keripy.
+
 ## 10. Test vectors
 
 `test-vectors/v1.json` gives:

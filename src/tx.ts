@@ -6,7 +6,7 @@
  */
 import { blake2b } from "@noble/hashes/blake2.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
-import { type CborValue, readArrayItems, readItem, Tagged } from "./cbor.js";
+import { type CborValue, readArrayItems, readItem, readMapItems, readTagHead, Tagged } from "./cbor.js";
 
 export class TransactionError extends Error {
   constructor(message: string) {
@@ -68,6 +68,34 @@ function auxiliaryMetadata(aux: CborValue): Map<CborValue, CborValue> | undefine
     return m instanceof Map ? m : undefined;
   }
   throw new TransactionError("unrecognised auxiliary data format");
+}
+
+/**
+ * The exact CBOR bytes of the metadatum value at `label`, as they are in the
+ * transaction's auxiliary data (CIP-0170 digests these bytes, never a
+ * re-encoding). Checked against the body's auxiliary data hash like
+ * parseTransaction. Undefined when the label is absent.
+ */
+export function metadatumBytes(txCborHex: string, label: number): Uint8Array | undefined {
+  parseTransaction(txCborHex); // tx id and auxiliary data hash checks
+  const bytes = hexToBytes(txCborHex);
+  const items = readArrayItems(bytes);
+  const aux = items.length === 4 ? items[3] : items[2];
+  if (aux.value === null) return undefined;
+  let mapOffset: number | undefined;
+  const tag = readTagHead(bytes, aux.start);
+  if (tag?.tag === 259) {
+    for (const [k, v] of readMapItems(bytes, tag.contentOffset)) if (k.value === 0) mapOffset = v.start;
+  } else if (aux.value instanceof Map) {
+    mapOffset = aux.start;
+  } else if (Array.isArray(aux.value)) {
+    mapOffset = readArrayItems(bytes, aux.start)[0].start;
+  }
+  if (mapOffset === undefined) return undefined;
+  for (const [k, v] of readMapItems(bytes, mapOffset)) {
+    if (k.value === label) return bytes.slice(v.start, v.end);
+  }
+  return undefined;
 }
 
 /** Re-reads a metadatum by label from raw CBOR — used by builders for a pre-submit check. */

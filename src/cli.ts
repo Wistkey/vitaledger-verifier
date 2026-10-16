@@ -7,18 +7,21 @@
  * (no indexer trust); needs: npm i @mithril-dev/mithril-client-wasm
  * --registry also checks the record's issuer against the on-chain issuer
  * registry (Aiken prototype; informational, does not change VALID/INVALID)
+ * --keri [oobi url] also checks a CIP-0170 ATTEST (label 170) in the anchor
+ * transaction against the operator's KERI key event log (informational)
  * Exit codes: 0 valid, 1 invalid, 2 error or not yet checkable.
  */
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { blockfrost, explorerUrl, koios, type Network } from "./chain.js";
 import { mithrilClient, verifyInclusionWithMithril } from "./mithril.js";
+import { KERI_OPERATOR, verifyAttest, fetchKel, type AttestResult } from "./cip170.js";
 import { checkIssuer, koiosRegistryLocator, lookupIssuer, REGISTRY, type IssuerCheck } from "./registry.js";
 import { type ProofBundle, verifyBundle } from "./verify.js";
 import { verifyAll } from "./verify-all.js";
 
 const USAGE =
-  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry]\n" +
+  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry] [--keri [oobi url]]\n" +
   "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>] [--blockfrost <id>]";
 
 async function main(): Promise<number> {
@@ -30,6 +33,7 @@ async function main(): Promise<number> {
       blockfrost: { type: "string", default: process.env.BLOCKFROST_PROJECT_ID },
       mithril: { type: "boolean", default: false },
       registry: { type: "boolean", default: false },
+      keri: { type: "string" },
       all: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -66,8 +70,10 @@ async function main(): Promise<number> {
 
   const issuer = values.registry && result.recordDigest ? await registryCheck(bundle, result.recordDigest, network, provider, values) : undefined;
 
+  const keri = values.keri !== undefined && result.txHash ? await keriCheck(result.txHash, network, provider, values.keri) : undefined;
+
   if (values.json) {
-    console.log(JSON.stringify(issuer ? { ...result, issuer } : result, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2));
+    console.log(JSON.stringify({ ...result, ...(issuer ? { issuer } : {}), ...(keri ? { keri } : {}) }, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2));
   } else {
     for (const c of result.checks) console.log(`${c.ok ? "✓" : "✗"} ${c.name}${c.detail ? ` — ${c.detail}` : ""}`);
     console.log("");
@@ -80,6 +86,7 @@ async function main(): Promise<number> {
       console.log(`INVALID: ${result.reason}`);
     }
     if (issuer) console.log(`Issuer (on-chain registry, informational): ${issuer.summary}`);
+    if (keri) console.log(`Operator KERI attestation (CIP-0170, informational): ${keri.summary}`);
   }
   if (result.valid && mithrilPending) {
     console.log("Mithril has not certified this transaction yet; retry in a few minutes for a trustless inclusion check.");
@@ -87,6 +94,31 @@ async function main(): Promise<number> {
   }
   if (result.unsupported) return 2;
   return result.valid ? 0 : 1;
+}
+
+/** --keri: the anchor transaction's CIP-0170 ATTEST against the operator's KEL (src/cip170.ts). */
+async function keriCheck(
+  txHash: string,
+  network: Network,
+  provider: ReturnType<typeof koios>,
+  oobiArg: string,
+): Promise<{ result?: AttestResult; summary: string }> {
+  const operator = KERI_OPERATOR[network];
+  const oobi = oobiArg || operator?.oobi;
+  if (!oobi) return { summary: `no KERI operator pinned for ${network}; pass --keri <oobi url>` };
+  try {
+    const [tx, kel] = await Promise.all([provider.fetchTransaction(txHash), fetchKel(oobi)]);
+    const result = verifyAttest(tx.cborHex, kel, operator?.aid);
+    const summary =
+      result.status === "absent"
+        ? "this anchor transaction carries no CIP-0170 ATTEST"
+        : result.status === "valid"
+          ? `valid: ${result.aid} anchored this batch's digest ${result.digest.slice(0, 12)}… in KEL event ${result.sn.toString(16)}${result.operator ? " (VitaLedger's pinned identifier)" : " (identifier not pinned in this verifier)"}`
+          : `INVALID: ${result.reason}`;
+    return { result, summary };
+  } catch (err) {
+    return { summary: `could not check: ${(err as Error).message}` };
+  }
 }
 
 interface RegistryReport {
