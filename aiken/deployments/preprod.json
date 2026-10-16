@@ -1,0 +1,10 @@
+{
+  "network": "preprod",
+  "validator": "registry.issuer_registry",
+  "aikenVersion": "v1.1.24",
+  "adminKeyHash": "0d6eb2dea431c9ca562b124bbf59929e18f19babe324266ab1aea42b",
+  "adminAddress": "addr_test1qqxkavk75scunjjk9vfyh06ej20p3uvm403jgfn2kxh2g2afzsf264mj8ggapkngksq454uayp2eg84hs6cymtljzd5qgshd8z",
+  "policyId": "175fc7b7e0b54ca97b67717db08ef9b3bdb54e2c9062daaeafe428a5",
+  "registryAddress": "addr_test1wqt4l3ahuz65e2tmvachmvywlxemmd2w9jgx9k4w4ljz3fgnupvfm",
+  "transactions": []
+}
