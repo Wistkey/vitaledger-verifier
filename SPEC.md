@@ -173,6 +173,8 @@ In the pilot, VitaLedger keeps the issuer registry off chain (`vl:registry:vital
 
 In Phase 2, issuer identities move to verifiable credentials; see §9. A smart-contract registry is considered only if issuer membership or revocation has to be enforced on chain.
 
+*Non-normative.* A prototype on-chain registry, an Aiken Plutus V3 validator, is on Preprod in `aiken/` in the source repository. Each issuer is one UTxO holding a registry token and an inline datum with the issuer id, kind, Ed25519 key and status. v1 verification does not use it, and nothing in §§4–6 depends on it.
+
 ## 9. Versioning and the CIP-0170 path
 
 - `schema` versions the record, and `v` versions the anchor format. A breaking change means a new value. Existing proofs stay valid indefinitely, because verification depends only on the bytes already on chain.

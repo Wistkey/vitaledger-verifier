@@ -13,3 +13,24 @@ jobs:
       - run: npm run build
       - name: Independent Python implementation reproduces the vectors
         run: python3 python/test_vectors.py
+
+  aiken:
+    # Issuer-registry prototype (aiken/). Not part of the npm package.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiken
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aiken-lang/setup-aiken@v1
+        with:
+          version: v1.1.24
+      - run: aiken fmt --check
+      - run: aiken check
+      - name: Committed blueprint (plutus.json) is up to date
+        run: aiken build && git diff --exit-code plutus.json
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: aiken/scripts/package-lock.json }
+      - name: Emulator end-to-end run of the compiled validator
+        working-directory: aiken/scripts
+        run: npm ci && npm run typecheck && npm run e2e
