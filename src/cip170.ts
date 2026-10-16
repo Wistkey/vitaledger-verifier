@@ -14,7 +14,13 @@ import { metadatumBytes, parseTransaction } from "./tx.js";
 export const CIP170_LABEL = 170;
 
 /** Pinned operator identifiers, by network: who VitaLedger's KERI AID is, and where its KEL is served. */
-export const KERI_OPERATOR: Partial<Record<"preprod" | "preview" | "mainnet", { aid: string; oobi: string }>> = {};
+export const KERI_OPERATOR: Partial<Record<"preprod" | "preview" | "mainnet", { aid: string; oobi: string }>> = {
+  // Incepted 16 Oct 2026 by keri-signer on the VitaLedger VM (Vitaledger-api docs/ANCHORING.md).
+  preprod: {
+    aid: "ENnzu8vq_7aI87ncO9OUQiNGDYTFPzxEVNoyNPvQl0vP",
+    oobi: "https://api.vitababy.ai/oobi/ENnzu8vq_7aI87ncO9OUQiNGDYTFPzxEVNoyNPvQl0vP",
+  },
+};
 
 export interface Attest {
   i: string;

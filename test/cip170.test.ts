@@ -70,3 +70,11 @@ describe("CIP-0170 ATTEST", () => {
     expect(verifyAttest(fakeTransaction(new Map([[22092, anchor]] as never)).cborHex, fx.kel)).toEqual({ status: "absent" });
   });
 });
+
+describe("pinned operator", () => {
+  it("pins VitaLedger's Preprod operator AID and its OOBI URL", async () => {
+    const { KERI_OPERATOR } = await import("../src/cip170.js");
+    expect(KERI_OPERATOR.preprod?.aid).toMatch(/^E[A-Za-z0-9_-]{43}$/);
+    expect(KERI_OPERATOR.preprod?.oobi).toBe(`https://api.vitababy.ai/oobi/${KERI_OPERATOR.preprod?.aid}`);
+  });
+});
