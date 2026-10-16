@@ -8,11 +8,11 @@
  * that transaction can be certified with Mithril. The indexer is trusted only
  * to say which UTxO currently holds the issuer's registry token.
  */
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { blake2b } from "@noble/hashes/blake2.js";
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import { type CborValue, decode, Tagged } from "./cbor.js";
 import type { ChainProvider, Network } from "./chain.js";
+import { verifyMessageSignature } from "./cip8.js";
 import { signedMessage } from "./signed-message.js";
 import { parseTransaction } from "./tx.js";
 
@@ -182,12 +182,7 @@ export function checkIssuer(entry: RegistryEntry | null, recordDigest: string, s
   if (!entry) return { status: "not_registered" };
   if (entry.status === "revoked") return { status: "revoked", entry };
   if (!signatureHex) return { status: "active", entry, signature: "absent" };
-  let ok = false;
-  try {
-    ok = /^[0-9a-f]{128}$/.test(signatureHex) &&
-      ed25519.verify(hexToBytes(signatureHex), signedMessage(recordDigest), hexToBytes(entry.pubkey));
-  } catch {
-    ok = false;
-  }
+  // Raw Ed25519 or a CIP-8 wallet signature (cip8.ts).
+  const ok = verifyMessageSignature(entry.pubkey, signedMessage(recordDigest), signatureHex);
   return { status: "active", entry, signature: ok ? "valid" : "invalid" };
 }

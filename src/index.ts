@@ -8,3 +8,5 @@ export * from "./tx.js";
 export * from "./chain.js";
 export * from "./verify.js";
 export * from "./registry.js";
+export * from "./cip8.js";
+export * from "./signed-message.js";
