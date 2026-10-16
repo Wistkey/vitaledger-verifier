@@ -1,6 +1,6 @@
 # On-chain issuer registry (Aiken prototype)
 
-**Status: deployed on Preprod (16 Oct 2026).** It holds the issuers `vl:issuer:vitaledger-relay` and `vl:issuer:demo-brand` and is read by the live proof page and by `vitaledger-verify --registry`. It is a pilot prototype: v1 verification (SPEC.md §§4–6) does not depend on it, and it isn't part of the published npm package. Deployment record: [`deployments/preprod.json`](deployments/preprod.json).
+**Status: deployed on Preprod (16 Oct 2026).** It holds the issuers `vl:issuer:vitaledger-relay`, `vl:issuer:demo-brand` and `vl:issuer:vitaledger-test` and is read by the live proof page and by `vitaledger-verify --registry`. It is a pilot prototype: v1 verification (SPEC.md §§4–6) does not depend on it, and it isn't part of the published npm package. Deployment record: [`deployments/preprod.json`](deployments/preprod.json).
 
 ## Why
 
