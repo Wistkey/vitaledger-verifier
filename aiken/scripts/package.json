@@ -9,7 +9,8 @@
     "new-admin-wallet": "tsx new-admin-wallet.ts",
     "register": "tsx register-issuer.ts",
     "update": "tsx update-issuer.ts",
-    "list": "tsx list-registry.ts"
+    "list": "tsx list-registry.ts",
+    "deploy-ref": "tsx deploy-reference-script.ts"
   },
   "engines": {
     "node": ">=20"

@@ -2,9 +2,17 @@
   "network": "preprod",
   "validator": "registry.issuer_registry",
   "aikenVersion": "v1.1.24",
-  "adminKeyHash": "0d6eb2dea431c9ca562b124bbf59929e18f19babe324266ab1aea42b",
-  "adminAddress": "addr_test1qqxkavk75scunjjk9vfyh06ej20p3uvm403jgfn2kxh2g2afzsf264mj8ggapkngksq454uayp2eg84hs6cymtljzd5qgshd8z",
-  "policyId": "175fc7b7e0b54ca97b67717db08ef9b3bdb54e2c9062daaeafe428a5",
-  "registryAddress": "addr_test1wqt4l3ahuz65e2tmvachmvywlxemmd2w9jgx9k4w4ljz3fgnupvfm",
+  "admins": {
+    "required": 2,
+    "keys": [
+      "0d6eb2dea431c9ca562b124bbf59929e18f19babe324266ab1aea42b",
+      "d344cdacc27318d0722f08c41fe2ee5d882549703125a52cff28b66a",
+      "455836917f0a119bd8adf55af17520e0953471ae3e08a55fb3f64849"
+    ]
+  },
+  "feePayer": "addr_test1qqxkavk75scunjjk9vfyh06ej20p3uvm403jgfn2kxh2g2afzsf264mj8ggapkngksq454uayp2eg84hs6cymtljzd5qgshd8z",
+  "policyId": "0e92840c45fd71b709522e8a6cf11f55bce8d5ce3f85ec50b6bed473",
+  "registryAddress": "addr_test1wq8f9pqvgh7hrdcf2ghg5m83ra2me6x4eclctmzsk6ldgucpgta68",
+  "referenceScript": null,
   "transactions": []
 }

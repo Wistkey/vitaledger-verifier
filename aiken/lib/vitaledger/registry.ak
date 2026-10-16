@@ -7,10 +7,29 @@
 //// but only the admin can mint a registry token.
 
 use aiken/collection/dict
-use aiken/crypto.{blake2b_224}
+use aiken/collection/list
+use aiken/crypto.{VerificationKeyHash, blake2b_224}
 use aiken/primitive/bytearray
 use cardano/assets.{AssetName, Assets, PolicyId}
 use cardano/transaction.{InlineDatum, Output}
+
+/// The registry admins: at least `required` of `keys` must sign every change.
+pub type MultiSig {
+  keys: List<VerificationKeyHash>,
+  required: Int,
+}
+
+/// True when at least `required` distinct admin keys signed. Duplicate keys
+/// in the parameter or in the signatories count once.
+pub fn is_authorized(
+  admins: MultiSig,
+  signatories: List<VerificationKeyHash>,
+) -> Bool {
+  admins.required >= 1 && list.count(
+    list.unique(admins.keys),
+    fn(k) { list.has(signatories, k) },
+  ) >= admins.required
+}
 
 /// The issuer kinds of SPEC §8.
 pub type IssuerKind {

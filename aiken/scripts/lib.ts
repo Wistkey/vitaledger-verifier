@@ -18,7 +18,9 @@ import {
   type LucidEvolution,
   type Network,
   type Script,
+  type TxSignBuilder,
   type UTxO,
+  walletFromSeed,
 } from "@lucid-evolution/lucid";
 
 const BLUEPRINT = new URL("../plutus.json", import.meta.url);
@@ -90,15 +92,24 @@ export function checkEntry(e: IssuerEntry): void {
   if (!KINDS.includes(e.kind)) throw new Error(`kind must be one of ${KINDS.join(", ")}`);
 }
 
+/** M of N admin payment-key hashes (the validator's `MultiSig` parameter). */
+export interface Admins {
+  keys: string[];
+  required: number;
+}
+
 export interface Registry {
   script: Script;
   policyId: string;
   address: string;
-  adminKeyHash: string;
+  admins: Admins;
 }
 
-/** The registry validator with the admin key hash applied. */
-export function registryFor(network: Network, adminKeyHash: string): Registry {
+/** The registry validator with the admin multisig applied. */
+export function registryFor(network: Network, admins: Admins): Registry {
+  if (admins.required < 1 || admins.required > new Set(admins.keys).size) {
+    throw new Error(`need 1 <= required <= ${new Set(admins.keys).size} distinct admin keys`);
+  }
   const blueprint = JSON.parse(readFileSync(BLUEPRINT, "utf8")) as {
     validators: Array<{ title: string; compiledCode: string }>;
   };
@@ -106,9 +117,11 @@ export function registryFor(network: Network, adminKeyHash: string): Registry {
   if (!v) throw new Error("plutus.json has no registry.issuer_registry validator; run `aiken build`");
   const script: Script = {
     type: "PlutusV3",
-    script: applyParamsToScript(applyDoubleCborEncoding(v.compiledCode), [adminKeyHash]),
+    script: applyParamsToScript(applyDoubleCborEncoding(v.compiledCode), [
+      new Constr(0, [admins.keys, BigInt(admins.required)]),
+    ]),
   };
-  return { script, policyId: mintingPolicyToId(script), address: validatorToAddress(network, script), adminKeyHash };
+  return { script, policyId: mintingPolicyToId(script), address: validatorToAddress(network, script), admins };
 }
 
 export function adminKeyHashOf(address: string): string {
@@ -142,42 +155,70 @@ export async function findEntry(lucid: LucidEvolution, reg: Registry, issuerId: 
   return found;
 }
 
-// ---- Transactions (each needs the admin wallet selected) -------------------
+// ---- Reference script (CIP-33) --------------------------------------------
 
-export async function registerTx(lucid: LucidEvolution, reg: Registry, entry: IssuerEntry) {
-  checkEntry(entry);
-  const unit = reg.policyId + tokenName(entry.issuerId);
-  return lucid
-    .newTx()
-    .mintAssets({ [unit]: 1n }, Register)
-    .attach.MintingPolicy(reg.script)
-    .pay.ToContract(reg.address, { kind: "inline", value: encodeEntry(entry) }, { [unit]: 1n })
-    .addSignerKey(reg.adminKeyHash)
-    .complete();
+/**
+ * The output carrying the registry script as a reference script, if deployed.
+ * It sits at the registry address with no token, so it's never an entry, and
+ * the admins can sweep it to replace it.
+ */
+export async function findReferenceScript(lucid: LucidEvolution, reg: Registry): Promise<UTxO | undefined> {
+  return (await lucid.utxosAt(reg.address)).find((u) => u.scriptRef?.script === reg.script.script);
 }
 
-export async function updateTx(lucid: LucidEvolution, reg: Registry, current: RegistryUtxo, next: IssuerEntry) {
+export async function deployReferenceScriptTx(lucid: LucidEvolution, reg: Registry) {
+  return lucid.newTx().pay.ToContract(reg.address, undefined, {}, reg.script).complete();
+}
+
+// ---- Transactions -----------------------------------------------------------
+// `signers` are the admin key hashes that will sign (at least `required`).
+// With `ref` (the reference-script UTxO) the script is read from chain instead
+// of being carried in every transaction.
+
+export interface Signing {
+  signers: string[];
+  ref?: UTxO;
+}
+
+function withScript<T extends ReturnType<LucidEvolution["newTx"]>>(tx: T, reg: Registry, s: Signing, kind: "mint" | "spend"): T {
+  for (const k of s.signers) tx.addSignerKey(k);
+  if (s.ref) return tx.readFrom([s.ref]) as T;
+  return (kind === "mint" ? tx.attach.MintingPolicy(reg.script) : tx.attach.SpendingValidator(reg.script)) as T;
+}
+
+export async function registerTx(lucid: LucidEvolution, reg: Registry, entry: IssuerEntry, s: Signing) {
+  checkEntry(entry);
+  const unit = reg.policyId + tokenName(entry.issuerId);
+  const tx = lucid
+    .newTx()
+    .mintAssets({ [unit]: 1n }, Register)
+    .pay.ToContract(reg.address, { kind: "inline", value: encodeEntry(entry) }, { [unit]: 1n });
+  return withScript(tx, reg, s, "mint").complete();
+}
+
+export async function updateTx(lucid: LucidEvolution, reg: Registry, current: RegistryUtxo, next: IssuerEntry, s: Signing) {
   checkEntry(next);
   if (next.issuerId !== current.entry.issuerId) throw new Error("issuer id cannot change");
   const unit = reg.policyId + tokenName(next.issuerId);
-  return lucid
+  const tx = lucid
     .newTx()
     .collectFrom([current.utxo], Update)
-    .attach.SpendingValidator(reg.script)
-    .pay.ToContract(reg.address, { kind: "inline", value: encodeEntry(next) }, { [unit]: 1n })
-    .addSignerKey(reg.adminKeyHash)
-    .complete();
+    .pay.ToContract(reg.address, { kind: "inline", value: encodeEntry(next) }, { [unit]: 1n });
+  return withScript(tx, reg, s, "spend").complete();
 }
 
-export async function retireTx(lucid: LucidEvolution, reg: Registry, current: RegistryUtxo) {
+export async function retireTx(lucid: LucidEvolution, reg: Registry, current: RegistryUtxo, s: Signing) {
   const unit = reg.policyId + tokenName(current.entry.issuerId);
-  return lucid
-    .newTx()
-    .collectFrom([current.utxo], Retire)
-    .mintAssets({ [unit]: -1n }, Remove)
-    .attach.SpendingValidator(reg.script)
-    .addSignerKey(reg.adminKeyHash)
-    .complete();
+  const tx = lucid.newTx().collectFrom([current.utxo], Retire).mintAssets({ [unit]: -1n }, Remove);
+  // One script serves both purposes; reading it once covers mint and spend.
+  return withScript(tx, reg, s, "spend").complete();
+}
+
+/** Signs with the fee-paying wallet, then each co-signing admin's payment key. */
+export async function signAll(tx: TxSignBuilder, cosignerSeeds: string[], network: Network) {
+  let signed = tx.sign.withWallet();
+  for (const seed of cosignerSeeds) signed = signed.sign.withPrivateKey(walletFromSeed(seed, { network }).paymentKey);
+  return signed.complete();
 }
 
 // ---- CLI plumbing ----------------------------------------------------------
@@ -192,11 +233,38 @@ export function readMnemonic(envFile: string): string {
   return line.slice(MNEMONIC_VAR.length + 1).trim();
 }
 
-export async function adminLucid(net: Net, envFile: string) {
+export interface Deployment {
+  network: Net;
+  admins: Admins;
+  policyId?: string;
+  registryAddress?: string;
+  referenceScript?: string; // "<tx hash>#<index>"
+}
+
+export function readDeployment(net: Net): Deployment {
+  return JSON.parse(readFileSync(new URL(`../deployments/${net}.json`, import.meta.url), "utf8"));
+}
+
+/**
+ * Lucid with the fee-paying admin wallet selected, plus the co-signers'
+ * seeds. Admin keys and threshold come from deployments/<net>.json.
+ */
+export async function adminLucid(net: Net, envFile: string, cosignEnvFiles: string[] = [], opts = { quorum: true }) {
   const lucid = await Lucid(new Koios(KOIOS[net]), LUCID_NETWORK[net]);
   lucid.selectWallet.fromSeed(readMnemonic(envFile));
-  const reg = registryFor(LUCID_NETWORK[net], adminKeyHashOf(await lucid.wallet().address()));
-  return { lucid, reg };
+  const deployment = readDeployment(net);
+  const reg = registryFor(LUCID_NETWORK[net], deployment.admins);
+  const cosignerSeeds = cosignEnvFiles.map(readMnemonic);
+  const signers = [
+    adminKeyHashOf(await lucid.wallet().address()),
+    ...cosignerSeeds.map((seed) => adminKeyHashOf(walletFromSeed(seed, { network: LUCID_NETWORK[net] }).address)),
+  ];
+  for (const k of signers) if (opts.quorum && !reg.admins.keys.includes(k)) throw new Error(`key ${k} is not a registry admin`);
+  if (opts.quorum && new Set(signers).size < reg.admins.required) {
+    throw new Error(`${reg.admins.required} of ${reg.admins.keys.length} admins must sign; pass --cosign <env> for the others`);
+  }
+  const ref = await findReferenceScript(lucid, reg);
+  return { lucid, reg, signing: { signers, ref } as Signing, cosignerSeeds, network: LUCID_NETWORK[net] };
 }
 
 export function parseNet(value: string | undefined): Net {

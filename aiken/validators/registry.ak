@@ -2,8 +2,9 @@
 ////
 //// One validator serves as both the minting policy of the registry tokens
 //// and the spending script of the registry address, so policy id = script
-//// hash = payment credential of every entry. Every action needs the admin's
-//// signature; the script's job is to keep the registry well formed: one
+//// hash = payment credential of every entry. Every action needs M of the N
+//// admin keys
+//// to sign; the script's job is to keep the registry well formed: one
 //// token per entry, the token stays at the registry address, the token name
 //// is bound to the issuer id, and the issuer id never changes.
 
@@ -15,8 +16,8 @@ use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction,
 }
 use vitaledger/registry.{
-  Active, Brand, IssuerEntry, IssuerStatus, Revoked, expect_entry,
-  is_well_formed, registry_tokens, token_name,
+  Active, Brand, IssuerEntry, IssuerStatus, MultiSig, Revoked, expect_entry,
+  is_authorized, is_well_formed, registry_tokens, token_name,
 }
 
 pub type MintAction {
@@ -33,9 +34,9 @@ pub type SpendAction {
   Retire
 }
 
-validator issuer_registry(admin: VerificationKeyHash) {
+validator issuer_registry(admins: MultiSig) {
   mint(redeemer: MintAction, policy_id: PolicyId, self: Transaction) {
-    expect list.has(self.extra_signatories, admin)
+    expect is_authorized(admins, self.extra_signatories)
     expect [Pair(name, quantity)] = registry_tokens(self.mint, policy_id)
     when redeemer is {
       Register -> {
@@ -64,7 +65,7 @@ validator issuer_registry(admin: VerificationKeyHash) {
     own_ref: OutputReference,
     self: Transaction,
   ) {
-    expect list.has(self.extra_signatories, admin)
+    expect is_authorized(admins, self.extra_signatories)
     expect Some(own_input) = list.find(
       self.inputs,
       fn(i) { i.output_reference == own_ref },
@@ -73,7 +74,7 @@ validator issuer_registry(admin: VerificationKeyHash) {
     expect Script(policy_id) = own_address.payment_credential
     when registry_tokens(own_input.output.value, policy_id) is {
       // Not a registry entry (e.g. someone sent ADA or a fake datum to the
-      // script address): the admin may sweep it.
+      // script address): the admins may sweep it.
       [] -> True
       [Pair(name, 1)] -> {
         let old_entry = expect_entry(own_input.output)
@@ -106,8 +107,20 @@ validator issuer_registry(admin: VerificationKeyHash) {
 
 // ## Tests
 
-const admin: VerificationKeyHash =
-  #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const admin_1: VerificationKeyHash =
+  #"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+
+const admin_2: VerificationKeyHash =
+  #"a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+
+const admin_3: VerificationKeyHash =
+  #"a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3"
+
+/// 2-of-3 admins.
+const admins: MultiSig =
+  MultiSig { keys: [admin_1, admin_2, admin_3], required: 2 }
+
+const quorum: List<VerificationKeyHash> = [admin_1, admin_3]
 
 const intruder: VerificationKeyHash =
   #"cccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
@@ -150,12 +163,15 @@ fn registry_address() -> Address {
   address.from_script(policy)
 }
 
-fn register_tx(output: Output, signer: VerificationKeyHash) -> Transaction {
+fn register_tx(
+  output: Output,
+  signers: List<VerificationKeyHash>,
+) -> Transaction {
   Transaction {
     ..transaction.placeholder,
     outputs: [output],
     mint: assets.from_asset(policy, token_name(issuer_id), 1),
-    extra_signatories: [signer],
+    extra_signatories: signers,
   }
 }
 
@@ -171,14 +187,14 @@ fn spend_tx(
   input: Output,
   outputs: List<Output>,
   mint: Assets,
-  signer: VerificationKeyHash,
+  signers: List<VerificationKeyHash>,
 ) -> Transaction {
   Transaction {
     ..transaction.placeholder,
     inputs: [Input { output_reference: own_ref, output: input }],
     outputs,
     mint,
-    extra_signatories: [signer],
+    extra_signatories: signers,
   }
 }
 
@@ -188,19 +204,19 @@ fn updated(datum: IssuerEntry) -> Output {
 
 test register_ok() {
   issuer_registry.mint(
-    admin,
+    admins,
     Register,
     policy,
-    register_tx(good_output(), admin),
+    register_tx(good_output(), quorum),
   )
 }
 
 test register_needs_admin() fail {
   issuer_registry.mint(
-    admin,
+    admins,
     Register,
     policy,
-    register_tx(good_output(), intruder),
+    register_tx(good_output(), [admin_1, intruder]),
   )
 }
 
@@ -210,7 +226,7 @@ test register_token_sent_elsewhere() fail {
     [Pair(token_name(issuer_id), 1)],
     entry(issuer_id, key_a, Active),
   )
-  issuer_registry.mint(admin, Register, policy, register_tx(output, admin))
+  issuer_registry.mint(admins, Register, policy, register_tx(output, quorum))
 }
 
 test register_bad_pubkey_length() fail {
@@ -219,7 +235,7 @@ test register_bad_pubkey_length() fail {
     [Pair(token_name(issuer_id), 1)],
     entry(issuer_id, #"1111", Active),
   )
-  issuer_registry.mint(admin, Register, policy, register_tx(output, admin))
+  issuer_registry.mint(admins, Register, policy, register_tx(output, quorum))
 }
 
 test register_bad_issuer_prefix() fail {
@@ -229,7 +245,7 @@ test register_bad_issuer_prefix() fail {
     [Pair(token_name(issuer_id), 1)],
     entry(id, key_a, Active),
   )
-  issuer_registry.mint(admin, Register, policy, register_tx(output, admin))
+  issuer_registry.mint(admins, Register, policy, register_tx(output, quorum))
 }
 
 test register_name_not_bound_to_id() fail {
@@ -238,15 +254,15 @@ test register_name_not_bound_to_id() fail {
     [Pair(token_name(issuer_id), 1)],
     entry("vl:issuer:someone-else", key_a, Active),
   )
-  issuer_registry.mint(admin, Register, policy, register_tx(output, admin))
+  issuer_registry.mint(admins, Register, policy, register_tx(output, quorum))
 }
 
 test register_two_tokens() fail {
   let tx = Transaction {
-    ..register_tx(good_output(), admin),
+    ..register_tx(good_output(), quorum),
     mint: assets.from_asset(policy, token_name(issuer_id), 2),
   }
-  issuer_registry.mint(admin, Register, policy, tx)
+  issuer_registry.mint(admins, Register, policy, tx)
 }
 
 test register_revoked_entry() fail {
@@ -255,7 +271,7 @@ test register_revoked_entry() fail {
     [Pair(token_name(issuer_id), 1)],
     entry(issuer_id, key_a, Revoked),
   )
-  issuer_registry.mint(admin, Register, policy, register_tx(output, admin))
+  issuer_registry.mint(admins, Register, policy, register_tx(output, quorum))
 }
 
 test update_rotates_key() {
@@ -263,9 +279,9 @@ test update_rotates_key() {
     good_output(),
     [updated(entry(issuer_id, key_b, Active))],
     assets.zero,
-    admin,
+    quorum,
   )
-  issuer_registry.spend(admin, None, Update, own_ref, tx)
+  issuer_registry.spend(admins, None, Update, own_ref, tx)
 }
 
 test update_revokes() {
@@ -273,9 +289,9 @@ test update_revokes() {
     good_output(),
     [updated(entry(issuer_id, key_a, Revoked))],
     assets.zero,
-    admin,
+    quorum,
   )
-  issuer_registry.spend(admin, None, Update, own_ref, tx)
+  issuer_registry.spend(admins, None, Update, own_ref, tx)
 }
 
 test update_needs_admin() fail {
@@ -283,9 +299,9 @@ test update_needs_admin() fail {
     good_output(),
     [updated(entry(issuer_id, key_b, Active))],
     assets.zero,
-    intruder,
+    [admin_1, intruder],
   )
-  issuer_registry.spend(admin, None, Update, own_ref, tx)
+  issuer_registry.spend(admins, None, Update, own_ref, tx)
 }
 
 test update_changes_issuer_id() fail {
@@ -293,19 +309,19 @@ test update_changes_issuer_id() fail {
     good_output(),
     [updated(entry("vl:issuer:someone-else", key_b, Active))],
     assets.zero,
-    admin,
+    quorum,
   )
-  issuer_registry.spend(admin, None, Update, own_ref, tx)
+  issuer_registry.spend(admins, None, Update, own_ref, tx)
 }
 
 test update_drops_token() fail {
   let leaked = entry_output(
-    address.from_verification_key(admin),
+    address.from_verification_key(admin_1),
     [Pair(token_name(issuer_id), 1)],
     entry(issuer_id, key_a, Active),
   )
-  let tx = spend_tx(good_output(), [leaked], assets.zero, admin)
-  issuer_registry.spend(admin, None, Update, own_ref, tx)
+  let tx = spend_tx(good_output(), [leaked], assets.zero, quorum)
+  issuer_registry.spend(admins, None, Update, own_ref, tx)
 }
 
 test retire_burns_token() {
@@ -313,17 +329,17 @@ test retire_burns_token() {
     good_output(),
     [],
     assets.from_asset(policy, token_name(issuer_id), -1),
-    admin,
+    quorum,
   )
   and {
-    issuer_registry.spend(admin, None, Retire, own_ref, tx),
-    issuer_registry.mint(admin, Remove, policy, tx),
+    issuer_registry.spend(admins, None, Retire, own_ref, tx),
+    issuer_registry.mint(admins, Remove, policy, tx),
   }
 }
 
 test retire_without_burn() fail {
-  let tx = spend_tx(good_output(), [], assets.zero, admin)
-  issuer_registry.spend(admin, None, Retire, own_ref, tx)
+  let tx = spend_tx(good_output(), [], assets.zero, quorum)
+  issuer_registry.spend(admins, None, Retire, own_ref, tx)
 }
 
 test sweep_non_entry() {
@@ -334,10 +350,43 @@ test sweep_non_entry() {
     reference_script: None,
   }
   issuer_registry.spend(
-    admin,
+    admins,
     None,
     Update,
     own_ref,
-    spend_tx(junk, [], assets.zero, admin),
+    spend_tx(junk, [], assets.zero, quorum),
   )
+}
+
+test one_admin_is_not_enough() fail {
+  issuer_registry.mint(
+    admins,
+    Register,
+    policy,
+    register_tx(good_output(), [admin_2]),
+  )
+}
+
+test duplicate_signature_counts_once() fail {
+  issuer_registry.mint(
+    admins,
+    Register,
+    policy,
+    register_tx(good_output(), [admin_2, admin_2]),
+  )
+}
+
+test duplicate_admin_key_counts_once() fail {
+  let weak = MultiSig { keys: [admin_1, admin_1, admin_2], required: 2 }
+  issuer_registry.mint(
+    weak,
+    Register,
+    policy,
+    register_tx(good_output(), [admin_1]),
+  )
+}
+
+test zero_threshold_rejected() fail {
+  let none = MultiSig { keys: [admin_1], required: 0 }
+  issuer_registry.mint(none, Register, policy, register_tx(good_output(), []))
 }
