@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import fx from "./fixtures/keri-kel.json" with { type: "json" };
+import cml from "./fixtures/cip170-tx.json" with { type: "json" };
 import { attestedDigest, verifyAttest } from "../src/cip170.js";
 import { blake3Qb64, KeriError, sealsOf, verifyKel } from "../src/keri.js";
 import { metadatumBytes } from "../src/tx.js";
@@ -58,6 +59,11 @@ describe("CIP-0170 ATTEST", () => {
     expect(verifyAttest(tx(attest(), { ...anchor, n: 2 }), fx.kel)).toMatchObject({ status: "invalid", reason: /does not match/ });
     expect(verifyAttest(tx(attest({ s: "1" })), fx.kel)).toMatchObject({ status: "invalid", reason: /does not anchor/ });
     expect(verifyAttest(tx(attest()), fx.kel, "E" + "A".repeat(43))).toMatchObject({ status: "invalid", reason: /other than VitaLedger/ });
+  });
+
+  it("accepts an ATTEST on a real CML-built transaction (Lucid Evolution)", () => {
+    expect(bytesToHex(metadatumBytes(cml.cborHex, 22092)!)).toBe(fx.attested.cborHex);
+    expect(verifyAttest(cml.cborHex, fx.kel, fx.aid)).toMatchObject({ status: "valid", operator: true });
   });
 
   it("reports a transaction without label 170 as absent", () => {

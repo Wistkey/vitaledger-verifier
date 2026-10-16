@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry]
- * vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>]
- *   re-verifies every anchored record the API lists, from public chain data
+ * vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--complete] [--json] [--koios <url>]
+ *   re-verifies every anchored record the API lists, from public chain data;
+ *   --complete also finds VitaLedger's anchors on chain and checks the API lists them all
  * --mithril also proves the transaction is on chain with a Mithril certificate
  * (no indexer trust); needs: npm i @mithril-dev/mithril-client-wasm
  * --registry also checks the record's issuer against the on-chain issuer
@@ -19,10 +20,11 @@ import { KERI_OPERATOR, verifyAttest, fetchKel, type AttestResult } from "./cip1
 import { checkIssuer, koiosRegistryLocator, lookupIssuer, REGISTRY, type IssuerCheck } from "./registry.js";
 import { type ProofBundle, verifyBundle } from "./verify.js";
 import { verifyAll } from "./verify-all.js";
+import { ANCHOR_ADDRESSES, koiosAnchorLister } from "./completeness.js";
 
 const USAGE =
   "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry] [--keri [oobi url]]\n" +
-  "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>] [--blockfrost <id>]";
+  "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--complete [--network <n>]] [--json] [--koios <url>] [--blockfrost <id>]";
 
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
@@ -33,6 +35,8 @@ async function main(): Promise<number> {
       blockfrost: { type: "string", default: process.env.BLOCKFROST_PROJECT_ID },
       mithril: { type: "boolean", default: false },
       registry: { type: "boolean", default: false },
+      complete: { type: "boolean", default: false },
+      network: { type: "string", default: "preprod" },
       keri: { type: "string" },
       all: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
@@ -172,8 +176,14 @@ async function registryCheck(
 /** --all: every anchored record the API lists, re-verified from public data. */
 async function verifyEverything(
   apiBase: string,
-  values: { json?: boolean; koios?: string; blockfrost?: string; mithril?: boolean },
+  values: { json?: boolean; koios?: string; blockfrost?: string; mithril?: boolean; complete?: boolean; network?: string },
 ): Promise<number> {
+  const completeNetwork = (values.network ?? "preprod") as Network;
+  const addresses = ANCHOR_ADDRESSES[completeNetwork];
+  if (values.complete && !addresses) {
+    console.error(`no anchor addresses pinned for ${completeNetwork}`);
+    return 2;
+  }
   if (!/^https?:\/\//.test(apiBase)) {
     console.error(USAGE);
     return 2;
@@ -187,6 +197,9 @@ async function verifyEverything(
           if (!clients.has(network)) clients.set(network, await mithrilClient(network));
           return verifyInclusionWithMithril(txHash, clients.get(network)!);
         }
+      : undefined,
+    completeness: values.complete
+      ? { network: completeNetwork, addresses: addresses!, lister: koiosAnchorLister(completeNetwork, values.koios) }
       : undefined,
     onRecord: values.json
       ? undefined
@@ -210,8 +223,22 @@ async function verifyEverything(
       console.log(`Mithril: ${report.records.filter((r) => r.mithril === "certified").length} certified${pending ? `, ${pending} not certified yet (recent anchors; retry in a few hours)` : ""}.`);
     }
     if (report.records.length === 0) console.log("No anchored records listed.");
+    const c = report.completeness;
+    if (c) {
+      console.log("");
+      console.log(`Completeness (from chain): ${c.history.length} batches on the operator's chain from ${c.history.at(-1)?.txHash.slice(0, 16) ?? "?"}… to ${c.history[0]?.txHash.slice(0, 16) ?? "?"}…`);
+      for (const m of c.missing) console.log(`${m.recent ? "?" : "✗"} batch ${m.txHash} (${m.n} records) is on chain but not listed by the API${m.recent ? " (recent: the API may not have confirmed it yet)" : ""}`);
+      for (const s of c.short) console.log(`✗ batch ${s.txHash} anchors ${s.n} records but the API lists ${s.listed}`);
+      for (const p of c.problems) console.log(`✗ ${p}`);
+      for (const o of c.outside) console.log(`· ${o.txHash} is an anchor outside the chain (for example a test made before launch); not counted`);
+      console.log(c.complete ? "COMPLETE: the API lists every batch on the operator's chain, with all their records." : "INCOMPLETE: see above.");
+      console.log("(The indexer is trusted to return the anchor address's full transaction list.)");
+    }
   }
-  return report.invalid > 0 ? 1 : report.errors.length > 0 || report.unsupported > 0 ? 2 : 0;
+  const incomplete = report.completeness && !report.completeness.complete;
+  const pendingOnly = report.completeness?.complete && report.completeness.missing.length > 0;
+  if (report.invalid > 0 || incomplete) return 1;
+  return report.errors.length > 0 || report.unsupported > 0 || pendingOnly ? 2 : 0;
 }
 
 main().then(

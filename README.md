@@ -46,6 +46,8 @@ npx -p vitaledger-verifier@0.5 -p @mithril-dev/mithril-client-wasm vitaledger-ve
 
 It lists the anchored records (`GET /api/v1/proofs`), fetches each record and its proof, checks that the record really hashes to the listed digest, and verifies it against the transaction bytes fetched from Koios (or Blockfrost), exactly like a single bundle. Each transaction is fetched once per batch. With `--mithril`, block inclusion is also proven from Cardano's own certificates, once per transaction; anchors from the last few hours may show as "not certified yet". The API is trusted for nothing: a changed or swapped record is reported invalid. Output ends with a summary such as `6 records in 3 transactions …: 6 valid, 0 invalid.`
 
+**Is anything missing?** Add `--complete` to also find VitaLedger's anchors **from the chain**: every label-22092 transaction paid from the operator's anchor address, which is pinned in the package, read from its own bytes. Batches name the previous one (`p`), so they form one chain. Every batch on it must be listed by the API with all its records, and anything off the chain (such as a pre-launch test anchor) is reported but not counted. The indexer is trusted to return the address's full transaction list, since no chain proof can show absence. An incomplete listing exits `1`.
+
 Exit codes: `0` all valid, `1` at least one record invalid, `2` some records couldn't be checked (network) or use a newer format than your verifier (SPEC §9: shown as "newer format; upgrade", never as tampering).
 
 Spec 1.1 (verifier 0.5.0) adds relayed official notices: `recall_notice` records whose subject is `{ "kind": "official_notice", "value": "uk-fsa:FSA-AA-45-2026" }` (SPEC §3, §3.1). Verifiers before 0.5.0 report those as invalid record format; upgrade. Add `--json` for the full report.
@@ -73,6 +75,8 @@ python3 python/test_vectors.py
 python3 python/vitaledger_verify.py python/bundle-live.json   # exit 0 = valid
 ```
 
+
+**Spec 1.2 extensions in Python.** `python/vitaledger_ext.py` (standard library only, with pure-Python Ed25519 and BLAKE3) covers CIP-8 signatures, registry entries, and KERI KEL plus CIP-0170 ATTEST checks. It isn't clean-room: it has the same author as the TypeScript. It is checked against fixtures made by other tools: keripy, Lucid Evolution/CML, @noble/hashes and RFC 8032 (`python3 python/test_extensions.py`).
 ## Develop
 
 ```bash

@@ -12,7 +12,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Independent Python implementation reproduces the vectors
-        run: python3 python/test_vectors.py
+        run: python3 python/test_vectors.py && python3 python/test_extensions.py
 
   aiken:
     # Issuer-registry prototype (aiken/). Not part of the npm package.
