@@ -12,3 +12,4 @@ export * from "./cip8.js";
 export * from "./signed-message.js";
 export * from "./keri.js";
 export * from "./cip170.js";
+export * from "./completeness.js";

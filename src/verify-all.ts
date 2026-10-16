@@ -7,6 +7,7 @@
  */
 import type { ChainProvider, ChainTransaction, Network } from "./chain.js";
 import { recordDigest } from "./digest.js";
+import { type AnchorLister, chainAnchors, checkCompleteness, type CompletenessReport } from "./completeness.js";
 import { type MithrilInclusion } from "./mithril.js";
 import { type ProofBundle, type VerificationResult, verifyBundle } from "./verify.js";
 
@@ -35,6 +36,8 @@ export interface VerifyAllReport {
   unsupported: number;
   /** Records that couldn't be checked (network, missing bundle). */
   errors: string[];
+  /** With `completeness`: whether every anchor on chain is listed (completeness.ts). */
+  completeness?: CompletenessReport;
 }
 
 export interface VerifyAllOptions {
@@ -45,6 +48,8 @@ export interface VerifyAllOptions {
   fetchJson?: (url: string) => Promise<unknown>;
   pageSize?: number;
   onRecord?: (outcome: RecordOutcome) => void;
+  /** Also check that the API lists every anchor found on chain from these addresses. */
+  completeness?: { network: Network; addresses: string[]; lister: AnchorLister; registryId?: string };
 }
 
 const defaultFetchJson = async (url: string) => {
@@ -135,5 +140,13 @@ export async function verifyAll(opts: VerifyAllOptions): Promise<VerifyAllReport
   } while (after);
 
   report.transactions = txs.size;
+  if (opts.completeness) {
+    const { network, addresses, lister, registryId = "vl:registry:vitaledger" } = opts.completeness;
+    if (!providers.has(network)) providers.set(network, memoised(opts.providerFor(network)));
+    const listedPerTx = new Map<string, number>();
+    for (const r of report.records) if (r.txHash) listedPerTx.set(r.txHash, (listedPerTx.get(r.txHash) ?? 0) + 1);
+    const anchors = await chainAnchors({ addresses, lister, provider: providers.get(network)!, registryId });
+    report.completeness = checkCompleteness(anchors, listedPerTx);
+  }
   return report;
 }
