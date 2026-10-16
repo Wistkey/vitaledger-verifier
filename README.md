@@ -32,6 +32,8 @@ Exit codes: `0` valid, `1` invalid, `2` error. Pass `--json` for machine-readabl
 npx -p vitaledger-verifier -p @mithril-dev/mithril-client-wasm vitaledger-verify bundle.json --mithril
 ```
 
+**Issuer on chain (prototype):** add `--registry` to look up the record's issuer in the on-chain issuer registry, an Aiken Plutus V3 contract (see [`aiken/`](aiken/README.md)). The entry is decoded from raw transaction bytes, like the anchor. When the bundle carries `issuerSignature`, the signature is checked against the registered key. With `--mithril`, the entry's transaction is certified too. The result is informational and never changes VALID or INVALID.
+
 ## Reproduce the whole pilot
 
 One command re-verifies **every** record VitaLedger has anchored, from public data, so anyone outside the team can check our claims in a few minutes (Node.js 20+):
@@ -58,7 +60,7 @@ Brands, labs, certifiers and recall authorities publish records with `vitaledger
 import { recordDigest, merkleRoot, inclusionProof, verifyBundle } from "vitaledger-verifier";
 ```
 
-The package's only runtime dependency is `@noble/hashes`. The CBOR reader is built in, and all the code runs in both Node and browsers.
+The package's runtime dependencies are `@noble/hashes` and `@noble/curves` (Ed25519, for the registry signature check). The CBOR reader is built in, and all the code runs in both Node and browsers.
 
 ## Independent implementation
 
