@@ -75,6 +75,8 @@ python3 python/test_vectors.py
 python3 python/vitaledger_verify.py python/bundle-live.json   # exit 0 = valid
 ```
 
+
+**Spec 1.2 extensions in Python.** `python/vitaledger_ext.py` (standard library only, with pure-Python Ed25519 and BLAKE3) covers CIP-8 signatures, registry entries, and KERI KEL plus CIP-0170 ATTEST checks. It isn't clean-room: it has the same author as the TypeScript. It is checked against fixtures made by other tools: keripy, Lucid Evolution/CML, @noble/hashes and RFC 8032 (`python3 python/test_extensions.py`).
 ## Develop
 
 ```bash

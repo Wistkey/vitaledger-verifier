@@ -32,5 +32,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Independent Python implementation reproduces the vectors
-        run: python3 python/test_vectors.py
+        run: python3 python/test_vectors.py && python3 python/test_extensions.py
       - run: npm publish --access public --provenance
