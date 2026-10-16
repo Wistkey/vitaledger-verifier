@@ -36,6 +36,12 @@ export function parseAttest(value: CborValue): Attest {
   return { i, d, s };
 }
 
+/** The transaction's label-170 ATTEST, or null if it carries none (throws if malformed). */
+export function attestOf(txCborHex: string): Attest | null {
+  const entry = parseTransaction(txCborHex).metadata.get(CIP170_LABEL);
+  return entry === undefined ? null : parseAttest(entry);
+}
+
 /** Digest of the label's metadatum bytes as CIP-0170 defines it (Blake3-256, CESR qb64). */
 export function attestedDigest(txCborHex: string, label = VITALEDGER_LABEL): string | undefined {
   const bytes = metadatumBytes(txCborHex, label);

@@ -6,4 +6,4 @@ export { VITALEDGER_LABEL } from "./metadata.js";
 export { checkIssuer, readRegistryEntry, registryTokenName, REGISTRY } from "./registry.js";
 export { publicKeyFromCoseKey, verifyMessageSignature } from "./cip8.js";
 export { signedMessage } from "./signed-message.js";
-export { verifyAttest, KERI_OPERATOR } from "./cip170.js";
+export { attestOf, verifyAttest, KERI_OPERATOR } from "./cip170.js";
