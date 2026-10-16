@@ -1,21 +1,24 @@
 #!/usr/bin/env node
 /**
- * vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril]
+ * vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry]
  * vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>]
  *   re-verifies every anchored record the API lists, from public chain data
  * --mithril also proves the transaction is on chain with a Mithril certificate
  * (no indexer trust); needs: npm i @mithril-dev/mithril-client-wasm
+ * --registry also checks the record's issuer against the on-chain issuer
+ * registry (Aiken prototype; informational, does not change VALID/INVALID)
  * Exit codes: 0 valid, 1 invalid, 2 error or not yet checkable.
  */
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { blockfrost, explorerUrl, koios, type Network } from "./chain.js";
 import { mithrilClient, verifyInclusionWithMithril } from "./mithril.js";
+import { checkIssuer, koiosRegistryLocator, lookupIssuer, REGISTRY, type IssuerCheck } from "./registry.js";
 import { type ProofBundle, verifyBundle } from "./verify.js";
 import { verifyAll } from "./verify-all.js";
 
 const USAGE =
-  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril]\n" +
+  "usage: vitaledger-verify <bundle.json> [--json] [--koios <url>] [--blockfrost <project id>] [--mithril] [--registry]\n" +
   "       vitaledger-verify --all <api base, e.g. https://api.vitababy.ai> [--mithril] [--json] [--koios <url>] [--blockfrost <id>]";
 
 async function main(): Promise<number> {
@@ -26,6 +29,7 @@ async function main(): Promise<number> {
       koios: { type: "string" },
       blockfrost: { type: "string", default: process.env.BLOCKFROST_PROJECT_ID },
       mithril: { type: "boolean", default: false },
+      registry: { type: "boolean", default: false },
       all: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -60,8 +64,10 @@ async function main(): Promise<number> {
     }
   }
 
+  const issuer = values.registry && result.recordDigest ? await registryCheck(bundle, result.recordDigest, network, provider, values) : undefined;
+
   if (values.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(issuer ? { ...result, issuer } : result, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2));
   } else {
     for (const c of result.checks) console.log(`${c.ok ? "✓" : "✗"} ${c.name}${c.detail ? ` — ${c.detail}` : ""}`);
     console.log("");
@@ -73,6 +79,7 @@ async function main(): Promise<number> {
     } else {
       console.log(`INVALID: ${result.reason}`);
     }
+    if (issuer) console.log(`Issuer (on-chain registry, informational): ${issuer.summary}`);
   }
   if (result.valid && mithrilPending) {
     console.log("Mithril has not certified this transaction yet; retry in a few minutes for a trustless inclusion check.");
@@ -80,6 +87,54 @@ async function main(): Promise<number> {
   }
   if (result.unsupported) return 2;
   return result.valid ? 0 : 1;
+}
+
+interface RegistryReport {
+  check?: IssuerCheck;
+  mithril?: string;
+  summary: string;
+  error?: string;
+}
+
+/** --registry: the record's issuer against the on-chain registry (src/registry.ts). */
+async function registryCheck(
+  bundle: ProofBundle,
+  digest: string,
+  network: Network,
+  provider: ReturnType<typeof koios>,
+  values: { koios?: string; mithril?: boolean },
+): Promise<RegistryReport> {
+  const deployment = REGISTRY[network];
+  const issuerId = (bundle.record as { issuer?: unknown })?.issuer;
+  if (!deployment) return { summary: `no issuer registry on ${network}` };
+  if (typeof issuerId !== "string") return { summary: "record has no issuer" };
+  try {
+    const entry = await lookupIssuer(issuerId, {
+      policyId: deployment.policyId,
+      locator: koiosRegistryLocator(network, values.koios),
+      provider,
+    });
+    const check = checkIssuer(entry, digest, bundle.issuerSignature);
+    let mithril: string | undefined;
+    if (values.mithril && entry) {
+      const inclusion = await verifyInclusionWithMithril(entry.txHash, await mithrilClient(network));
+      mithril = inclusion.certified ? "entry transaction certified by Mithril" : `entry transaction: ${inclusion.reason}`;
+    }
+    const where = entry ? ` (entry ${entry.txHash.slice(0, 16)}…#${entry.outputIndex}${mithril ? `; ${mithril}` : ""})` : "";
+    const summary =
+      check.status === "not_registered"
+        ? `${issuerId} is not in the on-chain registry`
+        : check.status === "revoked"
+          ? `${issuerId} is REVOKED in the on-chain registry${where}`
+          : check.signature === "valid"
+            ? `${issuerId} is active; the issuer's signature verifies under the registered key${where}`
+            : check.signature === "invalid"
+              ? `${issuerId} is active, but the bundle's signature does NOT verify under the registered key${where}`
+              : `${issuerId} is active (registered key ${check.entry.pubkey.slice(0, 16)}…); the bundle carries no signature to check${where}`;
+    return { check, mithril, summary };
+  } catch (err) {
+    return { summary: `could not read the registry: ${(err as Error).message}`, error: (err as Error).message };
+  }
 }
 
 /** --all: every anchored record the API lists, re-verified from public data. */

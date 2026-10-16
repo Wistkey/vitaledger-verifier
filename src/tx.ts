@@ -20,6 +20,8 @@ export interface ParsedTransaction {
   isValid: boolean;
   /** Label → metadatum, or empty when the transaction has no metadata. */
   metadata: Map<number, CborValue>;
+  /** The decoded transaction body (outputs are field 1). */
+  body: Map<CborValue, CborValue>;
 }
 
 const hash256 = (bytes: Uint8Array) => bytesToHex(blake2b(bytes, { dkLen: 32 }));
@@ -38,7 +40,7 @@ export function parseTransaction(txCborHex: string): ParsedTransaction {
   const metadata = new Map<number, CborValue>();
   if (aux.value === null) {
     if (body.value.has(7)) throw new TransactionError("body commits to auxiliary data that is missing");
-    return { txHash, isValid, metadata };
+    return { txHash, isValid, metadata, body: body.value };
   }
 
   const committed = body.value.get(7);
@@ -54,7 +56,7 @@ export function parseTransaction(txCborHex: string): ParsedTransaction {
       metadata.set(label, value);
     }
   }
-  return { txHash, isValid, metadata };
+  return { txHash, isValid, metadata, body: body.value };
 }
 
 /** Shelley map, Allegra/Mary [metadata, scripts], or Alonzo+ tag 259 {0: metadata}. */

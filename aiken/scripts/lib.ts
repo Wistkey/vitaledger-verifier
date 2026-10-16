@@ -32,7 +32,8 @@ export const KOIOS = {
 export const LUCID_NETWORK = { preprod: "Preprod", preview: "Preview" } as const;
 export type Net = keyof typeof KOIOS;
 
-export const KINDS = ["brand", "lab", "certifier", "recall_authority"] as const;
+// Same order as IssuerKind in registry.ak; names as in the API ("vitaledger" = Operator).
+export const KINDS = ["brand", "lab", "certifier", "recall_authority", "vitaledger"] as const;
 export type IssuerKind = (typeof KINDS)[number];
 export const STATUSES = ["active", "revoked"] as const;
 export type IssuerStatus = (typeof STATUSES)[number];

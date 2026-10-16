@@ -6,10 +6,9 @@ import { createPrivateKey, generateKeyPairSync, sign } from "node:crypto";
 import { recordDigest } from "./digest.js";
 import { validateRecord } from "./record.js";
 
-/** The exact bytes an issuer signs: UTF-8 of `vitaledger.record.v1:<recordDigest>`. */
-export function signedMessage(digest: string): Uint8Array {
-  return new TextEncoder().encode(`vitaledger.record.v1:${digest}`);
-}
+import { signedMessage } from "./signed-message.js";
+
+export { signedMessage };
 
 export interface IssuerKey {
   /** Raw 32-byte Ed25519 public key, lowercase hex: give this to VitaLedger. */

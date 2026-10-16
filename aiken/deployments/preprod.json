@@ -11,8 +11,8 @@
     ]
   },
   "feePayer": "addr_test1qqxkavk75scunjjk9vfyh06ej20p3uvm403jgfn2kxh2g2afzsf264mj8ggapkngksq454uayp2eg84hs6cymtljzd5qgshd8z",
-  "policyId": "0e92840c45fd71b709522e8a6cf11f55bce8d5ce3f85ec50b6bed473",
-  "registryAddress": "addr_test1wq8f9pqvgh7hrdcf2ghg5m83ra2me6x4eclctmzsk6ldgucpgta68",
+  "policyId": "b8645dd4274ef31a6ebe2cd0711a5eceeda5b7ba4ad4a2b5ab3d10a0",
+  "registryAddress": "addr_test1wzuxghw5ya80xxnwhckdqug6tm8wmfdhhf9dfg444v73pgqvl6t9f",
   "referenceScript": null,
   "transactions": []
 }

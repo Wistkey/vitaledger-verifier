@@ -7,3 +7,4 @@ export * from "./cbor.js";
 export * from "./tx.js";
 export * from "./chain.js";
 export * from "./verify.js";
+export * from "./registry.js";

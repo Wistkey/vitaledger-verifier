@@ -59,7 +59,10 @@ npm run list                                                # read-only
 
 `*.env` files are gitignored. Never commit an admin mnemonic. `--cosign` signs locally, so for real use each admin keeps their own key; passing a partly signed transaction between admins is a follow-up.
 
+## Reading it
+
+`vitaledger-verify bundle.json --registry [--mithril]` looks up the record's issuer (`src/registry.ts`). It decodes the entry from the raw CBOR of the transaction that created it and checks that against its transaction id. The issuer must hold exactly one token, at the script address, with the token name bound to the issuer id. With `--mithril` the entry transaction is also certified, so Koios is trusted only for "this UTxO is the current one". When the bundle carries `issuerSignature`, it is verified against the registered key. The pinned policy id is in `REGISTRY` in `src/registry.ts`.
+
 ## Not yet
 
-- The verifier, the proof page and the API don't read the registry yet. The next step would be checking a record's issuer key against the on-chain entry, ideally through a Mithril-certified read.
 - Mainnet is not deployed.

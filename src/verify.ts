@@ -13,6 +13,8 @@ export interface ProofBundle {
   record: unknown;
   proof: InclusionProof;
   anchor: { network: Network; txHash: string; label?: number };
+  /** Optional, non-normative: the issuer's Ed25519 signature (SPEC §8), checked by --registry. */
+  issuerSignature?: string;
 }
 
 export interface Check {

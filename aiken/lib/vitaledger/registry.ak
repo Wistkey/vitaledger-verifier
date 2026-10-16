@@ -31,12 +31,14 @@ pub fn is_authorized(
   ) >= admins.required
 }
 
-/// The issuer kinds of SPEC §8.
+/// The issuer kinds of SPEC §8, plus `Operator` for VitaLedger's own issuers
+/// (e.g. the recall relay; kind "vitaledger" in the API).
 pub type IssuerKind {
   Brand
   Lab
   Certifier
   RecallAuthority
+  Operator
 }
 
 pub type IssuerStatus {
