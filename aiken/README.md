@@ -52,12 +52,23 @@ npm run e2e            # compiled validator in the Lucid Emulator, including att
 # Preprod (admin keys + threshold in deployments/preprod.json)
 npm run new-admin-wallet -- --out admin-1.env             # once per admin; fund the fee payer from the faucet
 npm run deploy-ref -- --env admin-1.env                    # once: CIP-33 reference script
-npm run register -- --env admin-1.env --cosign admin-2.env --id vl:issuer:acme-foods --kind brand --pubkey <64 hex>
-npm run update   -- --env admin-1.env --cosign admin-3.env --id vl:issuer:acme-foods --pubkey <new hex>   # or --revoke / --retire
 npm run list                                                # read-only
+
+# Registry changes: admins sign on their own machines (signing request)
+npm run register -- --env admin-1.env --export req.json --cosigner 3 --id vl:issuer:acme-foods --kind brand --pubkey <64 hex>
+#   (or: npm run update -- --env admin-1.env --export req.json --cosigner 3 --id … --pubkey <new hex> | --revoke | --retire)
+#   send req.json to admin 3, who runs on their machine:
+npm run cosign -- --env admin-3.env --request req.json      # shows what the tx does, asks "yes", adds the signature
+#   they send req.json back; the fee payer submits (no recovery phrase needed):
+npm run submit-signed -- --request req.json
+
+# All keys on one machine (tests, rehearsal only)
+npm run register -- --env admin-1.env --cosign admin-2.env --id … --kind … --pubkey …
 ```
 
-`*.env` files are gitignored. Never commit an admin mnemonic. `--cosign` signs locally, so for real use each admin keeps their own key; passing a partly signed transaction between admins is a follow-up.
+`*.env` files are gitignored. Never commit an admin mnemonic, and never send one to another admin: use a signing request.
+
+**Signing requests** (`scripts/multisig.ts`). The fee payer builds and signs the transaction and writes `req.json`. It carries the unsigned transaction and the signatures so far, with no secrets, and expires after 24 hours. `cosign` decodes the transaction with **vitaledger-verifier's own CBOR code**, independently of the Lucid builder, and shows what it changes: the entries written, the tokens minted or burned, the inputs spent and the fee. It **refuses** a request for another registry, mismatched bytes, unknown signers, tokens of other policies, a fake entry at the registry address, or spent inputs. Only after "yes" does it add the co-signer's signature. `submit-signed` re-checks everything, requires `required` distinct admin signatures, adds them to the transaction without changing its id, and submits. Tested in the Emulator (`npm run e2e:multisig`) and on Preprod (17 Oct, `d575d03f…`).
 
 ## Reading it
 
