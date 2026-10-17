@@ -33,4 +33,4 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: aiken/scripts/package-lock.json }
       - name: Emulator end-to-end run of the compiled validator
         working-directory: aiken/scripts
-        run: npm ci && npm run typecheck && npm run e2e
+        run: npm ci && npm run typecheck && npm run e2e && npm run e2e:multisig

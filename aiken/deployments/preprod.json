@@ -39,6 +39,11 @@
       "date": "2026-10-16",
       "what": "register vl:issuer:vitaledger-test (admins 1+2)",
       "tx": "484fcc3e47178711f85181ac02669ab9338b4a680b87a7cba66514a681536fd8"
+    },
+    {
+      "date": "2026-10-17",
+      "what": "refresh vl:issuer:demo-brand via the signing-request flow (admin 1 exported, admin 3 co-signed separately)",
+      "tx": "d575d03f5eba80efa384e1b7aad9d74fbbd82dd509c7d30c8436ee881fb8d3fc"
     }
   ]
 }
