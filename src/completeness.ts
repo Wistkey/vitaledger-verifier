@@ -20,7 +20,12 @@ import { parseTransaction } from "./tx.js";
 
 /** The operator's anchor (fee-paying) addresses, by network. */
 export const ANCHOR_ADDRESSES: Partial<Record<Network, string[]>> = {
-  preprod: ["addr_test1qpc8szswzp35c7f4f0znrwsvzccnxl5hrtglqq7jy3qkj0nz0m62jpesyr4rng6hmv5jjdvkjv9xur26ma3lsdhvvzrs5k33mc"],
+  preprod: [
+    // Shared with the AceSpeak CIP-0170 spike until 19 Oct 2026 (batches from 2 Oct).
+    "addr_test1qpc8szswzp35c7f4f0znrwsvzccnxl5hrtglqq7jy3qkj0nz0m62jpesyr4rng6hmv5jjdvkjv9xur26ma3lsdhvvzrs5k33mc",
+    // VitaLedger's own anchor wallet from 19 Oct 2026. Batches keep chaining through `p` across the switch.
+    "addr_test1qq2wgjvzf6xjs6czdqkjkh880c0lrulvnhhq83z53qhw7ugcgwuc4lm52nlag605ghw3k2nlgh6pqwy58pu8ehkwek7s8rv8un",
+  ],
 };
 
 /** Lists the transactions of addresses that carry metadata at `label`. */
