@@ -179,10 +179,13 @@ export async function deployReferenceScriptTx(lucid: LucidEvolution, reg: Regist
 export interface Signing {
   signers: string[];
   ref?: UTxO;
+  /** POSIX ms; set for exported signing requests so a stale request can't be submitted. */
+  validTo?: number;
 }
 
 function withScript<T extends ReturnType<LucidEvolution["newTx"]>>(tx: T, reg: Registry, s: Signing, kind: "mint" | "spend"): T {
   for (const k of s.signers) tx.addSignerKey(k);
+  if (s.validTo) tx.validTo(s.validTo);
   if (s.ref) return tx.readFrom([s.ref]) as T;
   return (kind === "mint" ? tx.attach.MintingPolicy(reg.script) : tx.attach.SpendingValidator(reg.script)) as T;
 }

@@ -10,14 +10,18 @@
     "register": "tsx register-issuer.ts",
     "update": "tsx update-issuer.ts",
     "list": "tsx list-registry.ts",
-    "deploy-ref": "tsx deploy-reference-script.ts"
+    "deploy-ref": "tsx deploy-reference-script.ts",
+    "cosign": "tsx cosign.ts",
+    "submit-signed": "tsx submit-signed.ts",
+    "e2e:multisig": "tsx multisig.e2e.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@lucid-evolution/lucid": "^0.6.7",
-    "@noble/hashes": "^2.4.0"
+    "@noble/hashes": "^2.4.0",
+    "vitaledger-verifier": "^0.6.2"
   },
   "devDependencies": {
     "@noble/curves": "^2.4.0",
