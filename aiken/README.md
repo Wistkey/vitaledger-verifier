@@ -49,6 +49,11 @@ aiken build            # regenerate plutus.json
 cd scripts && npm ci
 npm run e2e            # compiled validator in the Lucid Emulator, including attacker cases
 
+# Real local devnet (fresh Yaci for each run; no public network)
+npm run yaci:up
+npm run e2e:yaci       # reference script, 2-of-3 lifecycle and rejected signatures
+npm run yaci:stop
+
 # Preprod (admin keys + threshold in deployments/preprod.json)
 npm run new-admin-wallet -- --out admin-1.env             # once per admin; fund the fee payer from the faucet
 npm run deploy-ref -- --env admin-1.env                    # once: CIP-33 reference script

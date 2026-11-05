@@ -13,7 +13,10 @@
     "deploy-ref": "tsx deploy-reference-script.ts",
     "cosign": "tsx cosign.ts",
     "submit-signed": "tsx submit-signed.ts",
-    "e2e:multisig": "tsx multisig.e2e.ts"
+    "e2e:multisig": "tsx multisig.e2e.ts",
+    "e2e:yaci": "tsx registry.yaci.e2e.ts",
+    "yaci:up": "STORE_CARDANO_RETURN_TX_BODY_CBOR=true STORE_TRANSACTION_SAVE_CBOR=true yaci-devkit up --enable-yaci-store",
+    "yaci:stop": "yaci-devkit stop || true"
   },
   "engines": {
     "node": ">=20"
@@ -24,6 +27,7 @@
     "vitaledger-verifier": "^0.6.2"
   },
   "devDependencies": {
+    "@bloxbean/yaci-devkit": "0.12.0",
     "@noble/curves": "^2.4.0",
     "@types/node": "^22.20.5",
     "tsx": "^4.23.15",

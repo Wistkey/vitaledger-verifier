@@ -3,3 +3,7 @@ dist/
 .env
 *.tgz
 __pycache__/
+.tools/
+aiken/scripts/logs/
+aiken/scripts/yaci-cli.history
+interop/bloxbean/target/

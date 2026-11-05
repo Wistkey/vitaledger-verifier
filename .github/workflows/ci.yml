@@ -34,3 +34,34 @@ jobs:
       - name: Emulator end-to-end run of the compiled validator
         working-directory: aiken/scripts
         run: npm ci && npm run typecheck && npm run e2e && npm run e2e:multisig
+
+  yaci-registry:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aiken/scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: aiken/scripts/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - run: npm ci
+      - name: Real Yaci registry end-to-end run
+        run: |
+          npm run yaci:up > /tmp/vitaledger-yaci-registry.log 2>&1 &
+          npm run e2e:yaci || { cat /tmp/vitaledger-yaci-registry.log; exit 1; }
+      - name: Stop Yaci
+        if: always()
+        run: npm run yaci:stop
+
+  bloxbean-interop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "25" }
+      - name: Java-built anchor passes the TypeScript verifier on Yaci
+        run: interop/bloxbean/run.sh
