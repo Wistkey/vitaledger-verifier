@@ -95,6 +95,12 @@ npm run typecheck
 npm run vectors   # regenerate test-vectors/v1.json
 ```
 
+Local Cardano tooling:
+
+- [`aiken/scripts/registry.yaci.e2e.ts`](aiken/scripts/registry.yaci.e2e.ts) runs the compiled issuer registry against a real Yaci DevKit devnet, including multisig and attacker cases. In `aiken/scripts`, run `npm run yaci:up`, `npm run e2e:yaci`, then `npm run yaci:stop` (use a fresh devnet for each run).
+- [`interop/bloxbean/`](interop/bloxbean/README.md) independently builds and signs the public test-vector anchor with BloxBean Cardano Client Lib 0.7.3, submits it to Yaci, and checks it with this TypeScript verifier. `interop/bloxbean/run.sh` runs the complete local check.
+- [`experiments/yano-x/`](experiments/yano-x/README.md) is an opt-in local proof of concept using pre-release Yano X v0.1.0-pre4. It is not a production integration or a required CI check.
+
 Licence: Apache-2.0.
 
 ## Releasing
