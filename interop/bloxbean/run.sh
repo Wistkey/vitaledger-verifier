@@ -3,6 +3,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd -P)"
 ROOT="$(cd "$HERE/../.." && pwd -P)"
 STORE_URL="${YACI_STORE_URL:-http://127.0.0.1:8080/api/v1}"
+EVIDENCE="${TOOLING_EVIDENCE:-$ROOT/.tools/evidence/bloxbean-yaci.json}"
 if [ -z "${JAVA_HOME:-}" ]; then export JAVA_HOME="$("$ROOT/scripts/install-jdk25.sh")"; fi
 export PATH="$JAVA_HOME/bin:$("$ROOT/scripts/install-maven.sh")/bin:$PATH"
 
@@ -28,4 +29,5 @@ curl -fsS "$STORE_URL/network" >/dev/null
 
 cd "$HERE"
 mvn -q compile exec:java -Dexec.args="$STORE_URL $ROOT/test-vectors/v1.json $ROOT/.tools/bloxbean-anchor.json"
-"$ROOT/node_modules/.bin/tsx" verify.ts "$STORE_URL" "$ROOT/.tools/bloxbean-anchor.json"
+TOOLING_EVIDENCE="$EVIDENCE" "$ROOT/node_modules/.bin/tsx" verify.ts "$STORE_URL" "$ROOT/.tools/bloxbean-anchor.json"
+"$ROOT/node_modules/.bin/tsx" "$ROOT/scripts/tooling-evidence.ts" "$EVIDENCE"

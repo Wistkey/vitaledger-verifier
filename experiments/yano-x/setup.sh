@@ -2,9 +2,9 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd -P)"
 ROOT="$(cd "$HERE/../.." && pwd -P)"
-VERSION="0.1.0-pre4"
+VERSION="0.1.0-pre6"
 NAME="yano-x-jvm-$VERSION.zip"
-SHA="2e35cdf12217d2f8a56587804ae9a3de8931f8e2fdb1668049a95a031507976f"
+SHA="861a6c68d3ad55dd82ed69d7b293b6812f218cbc5d6a42220fbad1658f562499"
 TARGET="$ROOT/.tools/yano-x-$VERSION"
 for candidate in "$TARGET" "$TARGET"/*; do
   if [ -f "$candidate/yano.jar" ] && [ -x "$candidate/examples/showcase/showcase.sh" ]; then
@@ -18,7 +18,7 @@ if [ ! -f "$ARCHIVE" ]; then
   curl -fL --retry 3 "https://github.com/bloxbean/yano-x/releases/download/v$VERSION/$NAME" -o "$ARCHIVE.download"
   mv "$ARCHIVE.download" "$ARCHIVE"
 fi
-printf '%s  %s\n' "$SHA" "$ARCHIVE" | shasum -a 256 -c -
+printf '%s  %s\n' "$SHA" "$ARCHIVE" | shasum -a 256 -c - >/dev/null
 rm -rf "$TARGET"
 mkdir -p "$TARGET"
 unzip -q "$ARCHIVE" -d "$TARGET"
