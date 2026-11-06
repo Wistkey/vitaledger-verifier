@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import {
   Blockfrost,
   Lucid,
@@ -30,6 +32,9 @@ for (const url of [storeUrl, adminUrl]) {
   assert.ok(parsed.protocol === "http:" && ["127.0.0.1", "localhost"].includes(parsed.hostname), "Yaci endpoints must be local");
 }
 const seed = `${Array(23).fill("test").join(" ")} sauce`;
+const startedAt = new Date().toISOString();
+const evidencePath = resolve(process.env.TOOLING_EVIDENCE ?? "../../.tools/evidence/yaci-registry.json");
+const evidenceAssertions: Array<{ name: string; ok: boolean; detail?: string }> = [];
 const network: Network = "Custom";
 const accounts = [0, 1, 2, 3];
 const [a1, a2, a3, attacker] = accounts;
@@ -111,12 +116,14 @@ const ref = await findReferenceScript(lucid, reg);
 assert.ok(ref, "reference script UTxO");
 const quorum: Signing = { signers: [kh(a1), kh(a3)], ref };
 console.log(`  ok  reference script at ${ref.txHash}#${ref.outputIndex}`);
+evidenceAssertions.push({ name: "compiled validator reference script deployed", ok: true });
 
 lucid.selectWallet.fromSeed(seed, { accountIndex: a1 });
 const attachedSize = (await registerTx(lucid, reg, acme, { signers: quorum.signers })).toCBOR().length / 2;
 const refSize = (await registerTx(lucid, reg, acme, quorum)).toCBOR().length / 2;
 assert.ok(refSize < attachedSize - 1000, `reference script should shrink the tx (${refSize} vs ${attachedSize} bytes)`);
 console.log(`  ok  register tx ${refSize} bytes with the reference script vs ${attachedSize} carrying it`);
+evidenceAssertions.push({ name: "reference script reduces transaction size", ok: true, detail: `${refSize} bytes vs ${attachedSize} bytes` });
 
 await rejects("one admin alone registers", () =>
   submit(a1, [], () => registerTx(lucid, reg, acme, { signers: [kh(a1)], ref })),
@@ -124,10 +131,12 @@ await rejects("one admin alone registers", () =>
 await rejects("one admin plus an outsider registers", () =>
   submit(a1, [attacker], () => registerTx(lucid, reg, acme, { signers: [kh(a1), kh(attacker)], ref })),
 );
+evidenceAssertions.push({ name: "one-admin and outsider registration attempts are rejected", ok: true });
 
 await submit(a1, [a3], () => registerTx(lucid, reg, acme, quorum));
 assert.deepEqual((await entries()).map((e) => e.entry), [acme]);
 console.log("  ok  admins 1+3 register acme-foods");
+evidenceAssertions.push({ name: "2-of-3 administrators register an issuer", ok: true });
 
 await rejects("outsider rotates acme's key", () =>
   submit(attacker, [], async () =>
@@ -151,6 +160,7 @@ await submit(attacker, [], () =>
 assert.equal((await lucid.utxosAt(reg.address)).length, 3);
 assert.deepEqual((await entries()).map((e) => e.entry.issuerId), [acme.issuerId]);
 console.log("  ok  fake datum and the reference-script output are not entries");
+evidenceAssertions.push({ name: "unminted fake datum is excluded from registry entries", ok: true });
 
 const rotated = { ...acme, pubkey: "22".repeat(32), updatedAt: 2n };
 await submit(a2, [a3], async () =>
@@ -158,6 +168,7 @@ await submit(a2, [a3], async () =>
 );
 assert.deepEqual((await entries()).map((e) => e.entry), [rotated]);
 console.log("  ok  admins 2+3 rotate acme's key");
+evidenceAssertions.push({ name: "2-of-3 administrators rotate the issuer key", ok: true });
 
 const revoked = { ...rotated, status: "revoked" as const, updatedAt: 3n };
 await submit(a1, [a2], async () =>
@@ -165,8 +176,23 @@ await submit(a1, [a2], async () =>
 );
 assert.deepEqual((await entries()).map((e) => e.entry), [revoked]);
 console.log("  ok  admins 1+2 revoke acme (entry kept, status revoked)");
+evidenceAssertions.push({ name: "2-of-3 administrators revoke the issuer", ok: true });
 
 await submit(a1, [a3], async () => retireTx(lucid, reg, await findEntry(lucid, reg, acme.issuerId), quorum));
 assert.deepEqual(await entries(), []);
 console.log("  ok  admins 1+3 retire acme (token burned)");
+evidenceAssertions.push({ name: "2-of-3 administrators retire the issuer and burn its token", ok: true });
+await mkdir(dirname(evidencePath), { recursive: true });
+await writeFile(evidencePath, `${JSON.stringify({
+  schema: "vitaledger.tooling-evidence.v1",
+  tool: "Yaci DevKit issuer-registry E2E",
+  toolVersion: "0.12.0",
+  mode: "ci",
+  network: "yaci-local",
+  startedAt,
+  finishedAt: new Date().toISOString(),
+  status: "passed",
+  assertions: evidenceAssertions,
+  registry: { address: reg.address, policyId: reg.policyId, members: 3, threshold: 2 },
+}, null, 2)}\n`, "utf8");
 console.log("Yaci registry e2e passed");

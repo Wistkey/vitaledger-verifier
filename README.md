@@ -99,7 +99,9 @@ Local Cardano tooling:
 
 - [`aiken/scripts/registry.yaci.e2e.ts`](aiken/scripts/registry.yaci.e2e.ts) runs the compiled issuer registry against a real Yaci DevKit devnet, including multisig and attacker cases. In `aiken/scripts`, run `npm run yaci:up`, `npm run e2e:yaci`, then `npm run yaci:stop` (use a fresh devnet for each run).
 - [`interop/bloxbean/`](interop/bloxbean/README.md) independently builds and signs the public test-vector anchor with BloxBean Cardano Client Lib 0.7.3, submits it to Yaci, and checks it with this TypeScript verifier. `interop/bloxbean/run.sh` runs the complete local check.
-- [`experiments/yano-x/`](experiments/yano-x/README.md) is an opt-in local proof of concept using pre-release Yano X v0.1.0-pre4. It is not a production integration or a required CI check.
+- [`experiments/yano-x/`](experiments/yano-x/README.md) is an opt-in local/shadow proof of concept using pre-release Yano X v0.1.0-pre6. It is not a production integration or an authoritative workflow.
+
+Each harness writes a `vitaledger.tooling-evidence.v1` JSON report under ignored `.tools/`; CI retains the report and diagnostics as artifacts. The weekly `shadow-canaries` workflow always runs Yano against one public VitaLedger proof. The BloxBean Preprod transaction is additionally gated by repository variable `ENABLE_BLOXBEAN_PREPROD_CANARY=true` and protected-environment secrets `BLOCKFROST_PREPROD_PROJECT_ID` and `BLOXBEAN_CANARY_MNEMONIC`; it uses a dedicated faucet wallet, never the production anchor wallet.
 
 Licence: Apache-2.0.
 

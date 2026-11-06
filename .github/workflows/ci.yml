@@ -51,6 +51,16 @@ jobs:
         run: |
           npm run yaci:up > /tmp/vitaledger-yaci-registry.log 2>&1 &
           npm run e2e:yaci || { cat /tmp/vitaledger-yaci-registry.log; exit 1; }
+      - name: Preserve Yaci evidence and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaci-registry-evidence
+          path: |
+            .tools/evidence/yaci-registry.json
+            /tmp/vitaledger-yaci-registry.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Stop Yaci
         if: always()
         run: npm run yaci:stop
@@ -65,3 +75,14 @@ jobs:
         with: { distribution: temurin, java-version: "25" }
       - name: Java-built anchor passes the TypeScript verifier on Yaci
         run: interop/bloxbean/run.sh
+      - name: Preserve BloxBean evidence and Yaci log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloxbean-yaci-evidence
+          path: |
+            .tools/evidence/bloxbean-yaci.json
+            .tools/bloxbean-anchor.json
+            .tools/bloxbean-yaci.log
+          if-no-files-found: warn
+          retention-days: 14

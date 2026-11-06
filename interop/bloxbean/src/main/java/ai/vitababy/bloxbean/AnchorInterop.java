@@ -34,20 +34,29 @@ public final class AnchorInterop {
         if (args.length != 3) {
             throw new IllegalArgumentException("usage: AnchorInterop <loopback-yaci-store-url> <v1.json> <output.json>");
         }
-        String storeUrl = localStoreUrl(args[0]);
+        String mode = System.getenv().getOrDefault("BLOXBEAN_MODE", "yaci");
+        boolean preprod = "preprod".equals(mode);
+        if (!preprod && !"yaci".equals(mode)) {
+            throw new IllegalArgumentException("BLOXBEAN_MODE must be yaci or preprod");
+        }
+        String storeUrl = preprod ? preprodUrl(args[0]) : localStoreUrl(args[0]);
+        String projectId = preprod ? requiredEnv("BLOCKFROST_PROJECT_ID") : "yaci-devkit";
+        String mnemonic = preprod ? requiredEnv("BLOXBEAN_CANARY_MNEMONIC") : DEVNET_MNEMONIC;
+        int accountIndex = preprod ? 0 : 4;
         Path vectorsPath = Path.of(args[1]).toAbsolutePath().normalize();
         Path outputPath = Path.of(args[2]).toAbsolutePath().normalize();
         ObjectMapper json = new ObjectMapper();
         JsonNode vectors = json.readTree(Files.readString(vectorsPath));
         JsonNode firstRecord = vectors.at("/records/0");
-        JsonNode metadataBody = vectors.at("/batch/metadata/22092");
+        JsonNode metadataBody = vectors.at("/batch/metadata/22092").deepCopy();
         if (firstRecord.isMissingNode() || metadataBody.isMissingNode()) {
             throw new IllegalArgumentException("test vector has no first record or label-22092 batch metadata");
         }
 
+        if (preprod) ((ObjectNode) metadataBody).put("i", "vl:registry:vitaledger-bloxbean-canary");
         Metadata metadata = MetadataBuilder.metadataFromJsonBody(LABEL, metadataBody.toString());
-        Account account = Account.createFromMnemonic(Networks.testnet(), DEVNET_MNEMONIC, 4, 0);
-        BackendService backend = new BFBackendService(storeUrl, "yaci-devkit");
+        Account account = Account.createFromMnemonic(Networks.testnet(), mnemonic, accountIndex, 0);
+        BackendService backend = new BFBackendService(storeUrl, projectId);
         AtomicReference<Transaction> signed = new AtomicReference<>();
         Tx tx = new Tx()
                 .payToAddress(account.baseAddress(), Amount.ada(1))
@@ -65,6 +74,9 @@ public final class AnchorInterop {
         ObjectNode output = json.createObjectNode();
         output.put("txHash", txHash);
         output.put("cborHex", signed.get().serializeToHex());
+        output.put("mode", mode);
+        output.put("provider", preprod ? "Blockfrost Preprod" : "Yaci Store");
+        output.put("registryId", metadataBody.get("i").asText());
         output.set("bundle", json.createObjectNode()
                 .set("record", firstRecord.get("record")));
         ((ObjectNode) output.get("bundle")).set("proof", firstRecord.get("proof"));
@@ -87,5 +99,19 @@ public final class AnchorInterop {
             throw new IllegalArgumentException("only a loopback HTTP Yaci Store endpoint is allowed");
         }
         return value.replaceAll("/+$", "") + "/";
+    }
+
+    private static String preprodUrl(String value) {
+        URI uri = URI.create(value);
+        if (!"https".equals(uri.getScheme()) || !"cardano-preprod.blockfrost.io".equals(uri.getHost())) {
+            throw new IllegalArgumentException("preprod mode requires the official Blockfrost Preprod endpoint");
+        }
+        return value.replaceAll("/+$", "") + "/";
+    }
+
+    private static String requiredEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(name + " is required");
+        return value;
     }
 }

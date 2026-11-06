@@ -1,0 +1,100 @@
+name: Cardano shadow canaries
+
+on:
+  schedule:
+    - cron: "17 7 * * 3"
+  workflow_dispatch:
+    inputs:
+      run_bloxbean_preprod:
+        description: "Submit the BloxBean Preprod canary (uses protected canary secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: cardano-shadow-canaries
+  cancel-in-progress: false
+
+jobs:
+  bloxbean-preprod:
+    if: vars.ENABLE_BLOXBEAN_PREPROD_CANARY == 'true' || inputs.run_bloxbean_preprod == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: preprod-canary
+    env:
+      BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PREPROD_PROJECT_ID }}
+      BLOXBEAN_CANARY_MNEMONIC: ${{ secrets.BLOXBEAN_CANARY_MNEMONIC }}
+      TOOLING_EVIDENCE: ${{ github.workspace }}/.tools/evidence/bloxbean-preprod.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "25" }
+      - name: Submit with BloxBean and verify independently through Koios
+        run: interop/bloxbean/run-preprod-canary.sh
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bloxbean-preprod-evidence
+          path: |
+            .tools/evidence/bloxbean-preprod.json
+            .tools/bloxbean-preprod-anchor.json
+          if-no-files-found: error
+          retention-days: 30
+
+  yano-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YANO_INSTANCE: shadow-${{ github.run_id }}
+      VITALEDGER_API_BASE: https://api.vitababy.ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Run the public-proof shadow workflow on an isolated local cluster
+        run: experiments/yano-x/run.sh
+      - name: Validate evidence
+        run: npx tsx scripts/tooling-evidence.ts ".tools/yano-x-evidence/$YANO_INSTANCE/evidence.json"
+      - name: Preserve evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yano-shadow-evidence
+          path: .tools/yano-x-evidence/${{ env.YANO_INSTANCE }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  alert:
+    if: always()
+    needs: [bloxbean-preprod, yano-shadow]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BLOXBEAN_RESULT: ${{ needs.bloxbean-preprod.result }}
+      YANO_RESULT: ${{ needs.yano-shadow.result }}
+    steps:
+      - name: Open, update, or close the tooling-canary issue
+        run: |
+          failed=false
+          [ "$BLOXBEAN_RESULT" = success ] || [ "$BLOXBEAN_RESULT" = skipped ] || failed=true
+          [ "$YANO_RESULT" = success ] || failed=true
+          gh label create tooling-canary --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "Cardano shadow canary failure" 2>/dev/null || true
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label tooling-canary --state open \
+            --json number --jq '.[0].number // empty')
+          if [ "$failed" = true ]; then
+            body="Cardano shadow canary failure: BloxBean=$BLOXBEAN_RESULT, Yano=$YANO_RESULT. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            if [ -n "$open" ]; then gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$body"; else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "Cardano shadow canary failed" --label tooling-canary --body "$body"
+            fi
+            exit 1
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" --comment "All enabled Cardano shadow canaries pass again."
+          fi
